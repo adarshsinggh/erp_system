@@ -191,7 +191,74 @@ export const APPROVAL_ACTIONS: Record<string, StatusConfig> = {
   modified: { label: 'Modified', color: 'blue' },
 };
 
+// ─── Alert & Notification Types (Step 2J) ───────────────────────
+export const ALERT_TYPES: Record<string, StatusConfig> = {
+  low_stock: { label: 'Low Stock', color: 'red' },
+  overstock: { label: 'Overstock', color: 'orange' },
+  payment_due: { label: 'Payment Due', color: 'purple' },
+  approval_pending: { label: 'Approval Pending', color: 'blue' },
+  consumption_anomaly: { label: 'Consumption Anomaly', color: 'gray' },
+};
+
+export const NOTIFICATION_TYPES: Record<string, StatusConfig> = {
+  alert: { label: 'Alert', color: 'red' },
+  reminder: { label: 'Reminder', color: 'orange' },
+  system: { label: 'System', color: 'blue' },
+};
+
+export const NOTIFICATION_PRIORITIES: Record<string, StatusConfig> = {
+  critical: { label: 'Critical', color: 'red' },
+  high: { label: 'High', color: 'orange' },
+  normal: { label: 'Normal', color: 'blue' },
+  low: { label: 'Low', color: 'gray' },
+};
+
+export const BACKUP_STATUSES: Record<string, StatusConfig> = {
+  running: { label: 'Running', color: 'blue' },
+  completed: { label: 'Completed', color: 'green' },
+  failed: { label: 'Failed', color: 'red' },
+};
+
+export const BACKUP_TYPES: Record<string, StatusConfig> = {
+  full: { label: 'Full', color: 'blue' },
+  incremental: { label: 'Incremental', color: 'purple' },
+};
 
 // ─── Pagination Defaults ─────────────────────────────────────────
 export const DEFAULT_PAGE_SIZE = 25;
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+// ─── Report Categories (Step 2K) ────────────────────────────────
+export const REPORT_CATEGORIES: Record<string, { label: string; color: string }> = {
+  sales: { label: 'Sales', color: 'blue' },
+  purchase: { label: 'Purchase', color: 'purple' },
+  inventory: { label: 'Inventory', color: 'green' },
+  financial: { label: 'Financial', color: 'indigo' },
+  manufacturing: { label: 'Manufacturing', color: 'orange' },
+  branch: { label: 'Branch', color: 'teal' },
+};
+
+export const GST_TAB_CONFIG: Record<string, { label: string; color: string }> = {
+  gstr1_b2b: { label: 'GSTR-1 B2B', color: 'blue' },
+  gstr1_b2c: { label: 'GSTR-1 B2C', color: 'purple' },
+  gstr1_cdnr: { label: 'Credit/Debit Notes', color: 'orange' },
+  gstr1_hsn: { label: 'HSN Summary', color: 'green' },
+  gstr3b: { label: 'GSTR-3B', color: 'indigo' },
+  einvoice: { label: 'E-Invoice', color: 'teal' },
+  eway_bill: { label: 'E-Way Bill', color: 'gray' },
+};
+
+export const INSIGHT_RISK_LEVELS: Record<string, StatusConfig> = {
+  critical: { label: 'Critical', color: 'red' },
+  high: { label: 'High', color: 'red' },
+  medium: { label: 'Medium', color: 'yellow' },
+  low: { label: 'Low', color: 'green' },
+  healthy: { label: 'Healthy', color: 'green' },
+};
+
+export const MOVEMENT_CATEGORIES: Record<string, StatusConfig> = {
+  fast: { label: 'Fast Moving', color: 'green' },
+  normal: { label: 'Normal', color: 'blue' },
+  slow: { label: 'Slow Moving', color: 'yellow' },
+  dead: { label: 'Dead Stock', color: 'red' },
+};

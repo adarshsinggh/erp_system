@@ -42,6 +42,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Inventory', icon: 'box',
     items: [
       { label: 'Stock Summary', path: '/inventory/stock', icon: 'bar-chart' },
+      { label: 'Stock Ledger', path: '/inventory/stock-ledger', icon: 'book-open' },
       { label: 'Transfers', path: '/inventory/transfers', icon: 'repeat' },
       { label: 'Adjustments', path: '/inventory/adjustments', icon: 'sliders' },
       { label: 'Batch & Serial', path: '/inventory/batch-serial', icon: 'hash' },
@@ -82,6 +83,14 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Insights', path: '/reports/insights', icon: 'trending-up' },
     ],
   },
+  {
+    label: 'System', icon: 'settings',
+    items: [
+      { label: 'Alert Rules', path: '/system/alert-rules', icon: 'bell' },
+      { label: 'Notifications', path: '/system/notifications', icon: 'inbox' },
+      { label: 'Backups', path: '/system/backups', icon: 'database' },
+    ],
+  },
 ];
 
 const NAV_BOTTOM: NavItem[] = [
@@ -112,6 +121,8 @@ const iconPaths: Record<string, React.ReactNode> = {
   'chevron-right': <polyline points="9 18 15 12 9 6" />,
   'chevron-down': <polyline points="6 9 12 15 18 9" />,
   'menu': <><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></>,
+  'bell': <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />,
+  'inbox': <><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z" /></>,
 };
 
 // ─── Sidebar Component ──────────────────────────────────────────

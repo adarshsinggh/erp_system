@@ -36,28 +36,6 @@ function PageSkeleton() {
   );
 }
 
-function ComingSoon() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <svg className="w-16 h-16 text-gray-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-          d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-      </svg>
-      <h2 className="text-lg font-semibold text-gray-400">Coming Soon</h2>
-      <p className="text-sm text-gray-400 mt-1">This module is under construction.</p>
-    </div>
-  );
-}
-
-// Helper to generate CRUD routes for a module
-function crudRoutes(base: string) {
-  return [
-    { path: base, element: <ComingSoon /> },
-    { path: `${base}/new`, element: <ComingSoon /> },
-    { path: `${base}/:id`, element: <ComingSoon /> },
-  ];
-}
-
 // ─── Lazy Imports ───────────────────────────────────────────────
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -117,6 +95,15 @@ const DebitNoteForm = lazy(() => import('../pages/purchase/DebitNoteForm').then(
 const VendorPaymentsList = lazy(() => import('../pages/purchase/VendorPaymentsList').then((m) => ({ default: m.VendorPaymentsList })));
 const VendorPaymentForm = lazy(() => import('../pages/purchase/VendorPaymentForm').then((m) => ({ default: m.VendorPaymentForm })));
 
+// Inventory (Step 2E)
+const StockSummaryPage = lazy(() => import('../pages/inventory/StockSummaryPage').then((m) => ({ default: m.StockSummaryPage })));
+const StockLedgerPage = lazy(() => import('../pages/inventory/StockLedgerPage').then((m) => ({ default: m.StockLedgerPage })));
+const StockTransfersList = lazy(() => import('../pages/inventory/StockTransfersList').then((m) => ({ default: m.StockTransfersList })));
+const StockTransferForm = lazy(() => import('../pages/inventory/StockTransferForm').then((m) => ({ default: m.StockTransferForm })));
+const StockAdjustmentsList = lazy(() => import('../pages/inventory/StockAdjustmentsList').then((m) => ({ default: m.StockAdjustmentsList })));
+const StockAdjustmentForm = lazy(() => import('../pages/inventory/StockAdjustmentForm').then((m) => ({ default: m.StockAdjustmentForm })));
+const BatchSerialPage = lazy(() => import('../pages/inventory/BatchSerialPage').then((m) => ({ default: m.BatchSerialPage })));
+
 // Manufacturing (Step 2F)
 const WorkOrdersList = lazy(() => import('../pages/manufacturing/WorkOrdersList').then((m) => ({ default: m.WorkOrdersList })));
 const WorkOrderForm = lazy(() => import('../pages/manufacturing/WorkOrderForm').then((m) => ({ default: m.WorkOrderForm })));
@@ -136,6 +123,16 @@ const ReconciliationPage = lazy(() => import('../pages/finance/ReconciliationPag
 const ApprovalsPage = lazy(() => import('../pages/approvals/ApprovalsPage').then((m) => ({ default: m.ApprovalsPage })));
 const ApprovalMatrixPage = lazy(() => import('../pages/approvals/ApprovalMatrixPage').then((m) => ({ default: m.ApprovalMatrixPage })));
 
+// Reports (Step 2K)
+const ReportViewerPage = lazy(() => import('../pages/reports/ReportViewerPage').then((m) => ({ default: m.ReportViewerPage })));
+const GSTReportsPage = lazy(() => import('../pages/reports/GSTReportsPage').then((m) => ({ default: m.GSTReportsPage })));
+const InsightsPage = lazy(() => import('../pages/reports/InsightsPage').then((m) => ({ default: m.InsightsPage })));
+
+// System (Step 2J)
+const AlertRulesList = lazy(() => import('../pages/system/AlertRulesList').then((m) => ({ default: m.AlertRulesList })));
+const AlertRuleForm = lazy(() => import('../pages/system/AlertRuleForm').then((m) => ({ default: m.AlertRuleForm })));
+const NotificationsPage = lazy(() => import('../pages/system/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
+const BackupsPage = lazy(() => import('../pages/system/BackupsPage').then((m) => ({ default: m.BackupsPage })));
 
 
 export const router = createBrowserRouter([
@@ -224,10 +221,15 @@ export const router = createBrowserRouter([
       { path: 'purchase/payments/:id', element: <LazyPage component={VendorPaymentForm} /> },
 
       // ─── Inventory (2E) ─────────────────────────────────────
-      { path: 'inventory/stock', element: <ComingSoon /> },
-      ...crudRoutes('inventory/transfers'),
-      ...crudRoutes('inventory/adjustments'),
-      { path: 'inventory/batch-serial', element: <ComingSoon /> },
+      { path: 'inventory/stock', element: <LazyPage component={StockSummaryPage} /> },
+      { path: 'inventory/stock-ledger', element: <LazyPage component={StockLedgerPage} /> },
+      { path: 'inventory/transfers', element: <LazyPage component={StockTransfersList} /> },
+      { path: 'inventory/transfers/new', element: <LazyPage component={StockTransferForm} /> },
+      { path: 'inventory/transfers/:id', element: <LazyPage component={StockTransferForm} /> },
+      { path: 'inventory/adjustments', element: <LazyPage component={StockAdjustmentsList} /> },
+      { path: 'inventory/adjustments/new', element: <LazyPage component={StockAdjustmentForm} /> },
+      { path: 'inventory/adjustments/:id', element: <LazyPage component={StockAdjustmentForm} /> },
+      { path: 'inventory/batch-serial', element: <LazyPage component={BatchSerialPage} /> },
 
       // ─── Manufacturing (2F) ─────────────────────────────────
       { path: 'manufacturing/work-orders', element: <LazyPage component={WorkOrdersList} /> },
@@ -240,7 +242,7 @@ export const router = createBrowserRouter([
       { path: 'manufacturing/scrap/new', element: <LazyPage component={ScrapEntryForm} /> },
       { path: 'manufacturing/scrap/:id', element: <LazyPage component={ScrapEntryForm} /> },
 
-     // ─── Finance (2G) ───────────────────────────────────────
+      // ─── Finance (2G) ───────────────────────────────────────
       { path: 'finance/accounts', element: <LazyPage component={ChartOfAccountsPage} /> },
       { path: 'finance/ledger', element: <LazyPage component={LedgerPage} /> },
       { path: 'finance/banks', element: <LazyPage component={BankAccountsList} /> },
@@ -248,19 +250,21 @@ export const router = createBrowserRouter([
       { path: 'finance/banks/:id', element: <LazyPage component={BankAccountForm} /> },
       { path: 'finance/reconciliation', element: <LazyPage component={ReconciliationPage} /> },
 
-{ path: 'approvals', element: <LazyPage component={ApprovalsPage} /> },
-{ path: 'approvals/matrix', element: <LazyPage component={ApprovalMatrixPage} /> },
+      // ─── Approvals (2H) ─────────────────────────────────────
+      { path: 'approvals', element: <LazyPage component={ApprovalsPage} /> },
+      { path: 'approvals/matrix', element: <LazyPage component={ApprovalMatrixPage} /> },
 
-      // ─── Reports (2I) ───────────────────────────────────────
-      { path: 'reports/viewer', element: <ComingSoon /> },
-      { path: 'reports/gst', element: <ComingSoon /> },
-      { path: 'reports/insights', element: <ComingSoon /> },
+      // ─── Reports (2K) ───────────────────────────────────────
+      { path: 'reports/viewer', element: <LazyPage component={ReportViewerPage} /> },
+      { path: 'reports/gst', element: <LazyPage component={GSTReportsPage} /> },
+      { path: 'reports/insights', element: <LazyPage component={InsightsPage} /> },
 
       // ─── System (2J) ────────────────────────────────────────
-      ...crudRoutes('system/alert-rules'),
-      { path: 'system/notifications', element: <ComingSoon /> },
-      { path: 'system/backups', element: <ComingSoon /> },
-      { path: 'system/shortcuts', element: <ComingSoon /> },
+      { path: 'system/alert-rules', element: <LazyPage component={AlertRulesList} /> },
+      { path: 'system/alert-rules/new', element: <LazyPage component={AlertRuleForm} /> },
+      { path: 'system/alert-rules/:id', element: <LazyPage component={AlertRuleForm} /> },
+      { path: 'system/notifications', element: <LazyPage component={NotificationsPage} /> },
+      { path: 'system/backups', element: <LazyPage component={BackupsPage} /> },
 
       // ─── Catch-all ──────────────────────────────────────────
       { path: '*', element: <Navigate to="/" replace /> },
