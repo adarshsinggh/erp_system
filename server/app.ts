@@ -1,8 +1,8 @@
 // =============================================================
 // File: server/app.ts
 // Description: Fastify server bootstrap with all route
-//              registrations. Updated to include Phase 7
-//              Inventory Management routes (Step 27).
+//              registrations. Updated to include Phase 10
+//              Approval Workflow routes (Step 41).
 // =============================================================
 
 import Fastify from 'fastify';
@@ -35,6 +35,20 @@ import { batchSerialRoutes } from './routes/batch-serial';
 import { manufacturingRoutes } from './routes/manufacturing';
 // Phase 9: Financial & Accounting
 import { financeRoutes } from './routes/finance';
+// Phase 10: Approval Workflow
+import { approvalWorkflowRoutes } from './routes/approval-workflow';
+// Phase 11: Smart Reorder & Automation
+import { reorderRoutes } from './routes/reorder';
+// Phase 12: Alerts, Notifications & Insights
+import { alertsNotificationsRoutes } from './routes/alerts-notifications';
+// Phase 13: Reporting Engine
+import { reportRoutes } from './routes/reports';
+// Phase 14: Audit, Compliance & Data Protection
+import { auditComplianceRoutes } from './routes/audit-compliance';
+// Phase 15: Sync & Multi-Device
+import { syncRoutes } from './routes/sync';
+// Phase 16: UI/UX Polish — Dashboard & Shortcuts
+import { dashboardRoutes } from './routes/dashboard';
 
 dotenv.config();
 
@@ -88,6 +102,20 @@ export async function buildServer() {
   await server.register(manufacturingRoutes, { prefix: '/api' });
   // Phase 9: Financial & Accounting
   await server.register(financeRoutes, { prefix: '/api' });
+  // Phase 10: Approval Workflow
+  await server.register(approvalWorkflowRoutes, { prefix: '/api' });
+  // Phase 11: Smart Reorder & Automation
+  await server.register(reorderRoutes, { prefix: '/api' });
+  // Phase 12: Alerts, Notifications & Insights
+  await server.register(alertsNotificationsRoutes, { prefix: '/api' });
+  // Phase 13: Reporting Engine
+  await server.register(reportRoutes, { prefix: '/api' });
+  // Phase 14: Audit, Compliance & Data Protection
+  await server.register(auditComplianceRoutes, { prefix: '/api' });
+  // Phase 15: Sync & Multi-Device
+  await server.register(syncRoutes, { prefix: '/api' });
+  // Phase 16: UI/UX Polish — Dashboard & Shortcuts
+  await server.register(dashboardRoutes, { prefix: '/api' });
 
   // Graceful shutdown
   const shutdown = async () => {
