@@ -132,6 +132,11 @@ const BankAccountsList = lazy(() => import('../pages/finance/BankAccountsList').
 const BankAccountForm = lazy(() => import('../pages/finance/BankAccountForm').then((m) => ({ default: m.BankAccountForm })));
 const ReconciliationPage = lazy(() => import('../pages/finance/ReconciliationPage').then((m) => ({ default: m.ReconciliationPage })));
 
+// Approvals (Step 2H)
+const ApprovalsPage = lazy(() => import('../pages/approvals/ApprovalsPage').then((m) => ({ default: m.ApprovalsPage })));
+const ApprovalMatrixPage = lazy(() => import('../pages/approvals/ApprovalMatrixPage').then((m) => ({ default: m.ApprovalMatrixPage })));
+
+
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LazyPage component={LoginPage} /> },
@@ -243,9 +248,8 @@ export const router = createBrowserRouter([
       { path: 'finance/banks/:id', element: <LazyPage component={BankAccountForm} /> },
       { path: 'finance/reconciliation', element: <LazyPage component={ReconciliationPage} /> },
 
-      // ─── Approvals (2H) ─────────────────────────────────────
-      { path: 'approvals', element: <ComingSoon /> },
-      { path: 'approvals/matrix', element: <ComingSoon /> },
+{ path: 'approvals', element: <LazyPage component={ApprovalsPage} /> },
+{ path: 'approvals/matrix', element: <LazyPage component={ApprovalMatrixPage} /> },
 
       // ─── Reports (2I) ───────────────────────────────────────
       { path: 'reports/viewer', element: <ComingSoon /> },

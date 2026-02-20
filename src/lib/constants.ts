@@ -167,6 +167,31 @@ export const BANK_ACCOUNT_TYPES: Record<string, StatusConfig> = {
   cc: { label: 'Cash Credit', color: 'purple' },
 };
 
+
+// ─── Approval Workflow ──────────────────────────────────────────
+export const APPROVAL_DOC_TYPES: Record<string, StatusConfig> = {
+  sales_order: { label: 'Sales Order', color: 'blue' },
+  sales_invoice: { label: 'Sales Invoice', color: 'green' },
+  purchase_requisition: { label: 'Purchase Req.', color: 'purple' },
+  purchase_order: { label: 'Purchase Order', color: 'blue' },
+  stock_adjustment: { label: 'Stock Adjustment', color: 'orange' },
+  stock_transfer: { label: 'Stock Transfer', color: 'purple' },
+  work_order: { label: 'Work Order', color: 'gray' },
+  credit_note: { label: 'Credit Note', color: 'red' },
+  debit_note: { label: 'Debit Note', color: 'red' },
+  payment_receipt: { label: 'Payment Receipt', color: 'green' },
+  payment_made: { label: 'Payment Made', color: 'orange' },
+  journal_entry: { label: 'Journal Entry', color: 'gray' },
+};
+
+export const APPROVAL_ACTIONS: Record<string, StatusConfig> = {
+  pending: { label: 'Pending', color: 'orange' },
+  approved: { label: 'Approved', color: 'green' },
+  rejected: { label: 'Rejected', color: 'red' },
+  modified: { label: 'Modified', color: 'blue' },
+};
+
+
 // ─── Pagination Defaults ─────────────────────────────────────────
 export const DEFAULT_PAGE_SIZE = 25;
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
