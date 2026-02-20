@@ -1,75 +1,91 @@
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { useAuthStore } from '../stores/authStore';
+
 const API_BASE = localStorage.getItem('apiUrl') || 'http://localhost:3001';
 
-class ApiClient {
-  private baseUrl: string;
-  private token: string | null = null;
+// ─── Axios Instance ──────────────────────────────────────────────
+const http: AxiosInstance = axios.create({
+  baseURL: `${API_BASE}/api`,
+  timeout: 30_000,
+  headers: { 'Content-Type': 'application/json' },
+});
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-    this.token = localStorage.getItem('token');
+// ─── Request Interceptor: Attach JWT ─────────────────────────────
+http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const token = useAuthStore.getState().token;
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
+  return config;
+});
 
-  setToken(token: string) {
-    this.token = token;
-    localStorage.setItem('token', token);
+// ─── Response Interceptor: Handle 401 & Errors ───────────────────
+http.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<{ error?: string; message?: string }>) => {
+    if (error.response?.status === 401) {
+      useAuthStore.getState().clearAuth();
+      window.location.href = '/login';
+    }
+    const message =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      'Something went wrong';
+    return Promise.reject(new Error(message));
   }
+);
 
-  clearToken() {
-    this.token = null;
-    localStorage.removeItem('token');
-  }
-
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
-
-    const response = await fetch(`${this.baseUrl}/api${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `Request failed: ${response.status}`);
-    return data;
-  }
-
-  // Health
-  async healthCheck() {
-    return this.request<{ status: string }>('GET', '/health');
-  }
-
-  async setupStatus() {
-    return this.request<{ status: string; hasCompany: boolean; needsSetup: boolean }>('GET', '/health/setup-status');
-  }
-
-  // Company
-  async setupCompany(data: unknown) {
-    return this.request<{ success: boolean; data: unknown }>('POST', '/setup', data);
-  }
-
-  async listCompanies() {
-    return this.request<{ success: boolean; data: unknown[] }>('GET', '/companies');
-  }
-
-  // Auth
-  async login(username: string, password: string, companyId: string) {
-    const result = await this.request<{ success: boolean; data: { token: string; user: unknown } }>(
-      'POST', '/auth/login', { username, password, company_id: companyId }
-    );
-    if (result.data?.token) this.setToken(result.data.token);
-    return result;
-  }
-
-  async verifyToken() {
-    return this.request<{ success: boolean; data: unknown }>('POST', '/auth/verify');
-  }
-
-  async changePassword(currentPassword: string, newPassword: string) {
-    return this.request<{ success: boolean }>('POST', '/auth/change-password', {
-      current_password: currentPassword, new_password: newPassword,
-    });
-  }
+// ─── Typed API Helpers ───────────────────────────────────────────
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data: T;
+  message?: string;
 }
 
-export const api = new ApiClient(API_BASE);
+export interface PaginatedResponse<T = unknown> {
+  success: boolean;
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface ListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+  [key: string]: unknown;
+}
+
+async function get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+  const { data } = await http.get<T>(url, { params });
+  return data;
+}
+
+async function post<T>(url: string, body?: unknown): Promise<T> {
+  const { data } = await http.post<T>(url, body);
+  return data;
+}
+
+async function put<T>(url: string, body?: unknown): Promise<T> {
+  const { data } = await http.put<T>(url, body);
+  return data;
+}
+
+async function patch<T>(url: string, body?: unknown): Promise<T> {
+  const { data } = await http.patch<T>(url, body);
+  return data;
+}
+
+async function del<T>(url: string): Promise<T> {
+  const { data } = await http.delete<T>(url);
+  return data;
+}
+
+export const apiClient = { get, post, put, patch, del, http };
+export default apiClient;

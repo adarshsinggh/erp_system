@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "jsx": "react-jsx",              // ← ADD THIS
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -17,5 +18,7 @@
       "@server/*": ["server/*"],
       "@/*": ["src/*"]
     }
-  }
+  },
+  "include": ["src/**/*"],             // ← ADD THIS
+  "exclude": ["node_modules", "dist"]  // ← ADD THIS
 }

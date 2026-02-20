@@ -4,7 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  root: 'src',
+  root: 'src',             // Vite looks in src/ for index.html
   base: './',
   build: {
     outDir: '../dist/renderer',
