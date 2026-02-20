@@ -49,6 +49,15 @@ function ComingSoon() {
   );
 }
 
+// Helper to generate CRUD routes for a module
+function crudRoutes(base: string) {
+  return [
+    { path: base, element: <ComingSoon /> },
+    { path: `${base}/new`, element: <ComingSoon /> },
+    { path: `${base}/:id`, element: <ComingSoon /> },
+  ];
+}
+
 // ─── Lazy Imports ───────────────────────────────────────────────
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -94,14 +103,27 @@ const CreditNoteForm = lazy(() => import('../pages/sales/CreditNoteForm').then((
 const PaymentReceiptsList = lazy(() => import('../pages/sales/PaymentReceiptsList').then((m) => ({ default: m.PaymentReceiptsList })));
 const PaymentReceiptForm = lazy(() => import('../pages/sales/PaymentReceiptForm').then((m) => ({ default: m.PaymentReceiptForm })));
 
-// Helper to generate CRUD routes for a module
-function crudRoutes(base: string) {
-  return [
-    { path: base, element: <ComingSoon /> },
-    { path: `${base}/new`, element: <ComingSoon /> },
-    { path: `${base}/:id`, element: <ComingSoon /> },
-  ];
-}
+// Purchase (Step 2D)
+const PurchaseRequisitionsList = lazy(() => import('../pages/purchase/PurchaseRequisitionsList').then((m) => ({ default: m.PurchaseRequisitionsList })));
+const PurchaseRequisitionForm = lazy(() => import('../pages/purchase/PurchaseRequisitionForm').then((m) => ({ default: m.PurchaseRequisitionForm })));
+const PurchaseOrdersList = lazy(() => import('../pages/purchase/PurchaseOrdersList').then((m) => ({ default: m.PurchaseOrdersList })));
+const PurchaseOrderForm = lazy(() => import('../pages/purchase/PurchaseOrderForm').then((m) => ({ default: m.PurchaseOrderForm })));
+const GoodsReceiptNotesList = lazy(() => import('../pages/purchase/GoodsReceiptNotesList').then((m) => ({ default: m.GoodsReceiptNotesList })));
+const GoodsReceiptNoteForm = lazy(() => import('../pages/purchase/GoodsReceiptNoteForm').then((m) => ({ default: m.GoodsReceiptNoteForm })));
+const VendorBillsList = lazy(() => import('../pages/purchase/VendorBillsList').then((m) => ({ default: m.VendorBillsList })));
+const VendorBillForm = lazy(() => import('../pages/purchase/VendorBillForm').then((m) => ({ default: m.VendorBillForm })));
+const DebitNotesList = lazy(() => import('../pages/purchase/DebitNotesList').then((m) => ({ default: m.DebitNotesList })));
+const DebitNoteForm = lazy(() => import('../pages/purchase/DebitNoteForm').then((m) => ({ default: m.DebitNoteForm })));
+const VendorPaymentsList = lazy(() => import('../pages/purchase/VendorPaymentsList').then((m) => ({ default: m.VendorPaymentsList })));
+const VendorPaymentForm = lazy(() => import('../pages/purchase/VendorPaymentForm').then((m) => ({ default: m.VendorPaymentForm })));
+
+// Manufacturing (Step 2F)
+const WorkOrdersList = lazy(() => import('../pages/manufacturing/WorkOrdersList').then((m) => ({ default: m.WorkOrdersList })));
+const WorkOrderForm = lazy(() => import('../pages/manufacturing/WorkOrderForm').then((m) => ({ default: m.WorkOrderForm })));
+const ProductionEntriesList = lazy(() => import('../pages/manufacturing/ProductionEntriesList').then((m) => ({ default: m.ProductionEntriesList })));
+const ProductionEntryForm = lazy(() => import('../pages/manufacturing/ProductionEntryForm').then((m) => ({ default: m.ProductionEntryForm })));
+const ScrapEntriesList = lazy(() => import('../pages/manufacturing/ScrapEntriesList').then((m) => ({ default: m.ScrapEntriesList })));
+const ScrapEntryForm = lazy(() => import('../pages/manufacturing/ScrapEntryForm').then((m) => ({ default: m.ScrapEntryForm })));
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LazyPage component={LoginPage} /> },
@@ -169,12 +191,24 @@ export const router = createBrowserRouter([
       { path: 'sales/payments/:id', element: <LazyPage component={PaymentReceiptForm} /> },
 
       // ─── Purchase (2D) ──────────────────────────────────────
-      ...crudRoutes('purchase/requisitions'),
-      ...crudRoutes('purchase/orders'),
-      ...crudRoutes('purchase/grn'),
-      ...crudRoutes('purchase/bills'),
-      ...crudRoutes('purchase/debit-notes'),
-      ...crudRoutes('purchase/payments'),
+      { path: 'purchase/requisitions', element: <LazyPage component={PurchaseRequisitionsList} /> },
+      { path: 'purchase/requisitions/new', element: <LazyPage component={PurchaseRequisitionForm} /> },
+      { path: 'purchase/requisitions/:id', element: <LazyPage component={PurchaseRequisitionForm} /> },
+      { path: 'purchase/orders', element: <LazyPage component={PurchaseOrdersList} /> },
+      { path: 'purchase/orders/new', element: <LazyPage component={PurchaseOrderForm} /> },
+      { path: 'purchase/orders/:id', element: <LazyPage component={PurchaseOrderForm} /> },
+      { path: 'purchase/grn', element: <LazyPage component={GoodsReceiptNotesList} /> },
+      { path: 'purchase/grn/new', element: <LazyPage component={GoodsReceiptNoteForm} /> },
+      { path: 'purchase/grn/:id', element: <LazyPage component={GoodsReceiptNoteForm} /> },
+      { path: 'purchase/bills', element: <LazyPage component={VendorBillsList} /> },
+      { path: 'purchase/bills/new', element: <LazyPage component={VendorBillForm} /> },
+      { path: 'purchase/bills/:id', element: <LazyPage component={VendorBillForm} /> },
+      { path: 'purchase/debit-notes', element: <LazyPage component={DebitNotesList} /> },
+      { path: 'purchase/debit-notes/new', element: <LazyPage component={DebitNoteForm} /> },
+      { path: 'purchase/debit-notes/:id', element: <LazyPage component={DebitNoteForm} /> },
+      { path: 'purchase/payments', element: <LazyPage component={VendorPaymentsList} /> },
+      { path: 'purchase/payments/new', element: <LazyPage component={VendorPaymentForm} /> },
+      { path: 'purchase/payments/:id', element: <LazyPage component={VendorPaymentForm} /> },
 
       // ─── Inventory (2E) ─────────────────────────────────────
       { path: 'inventory/stock', element: <ComingSoon /> },
@@ -183,9 +217,15 @@ export const router = createBrowserRouter([
       { path: 'inventory/batch-serial', element: <ComingSoon /> },
 
       // ─── Manufacturing (2F) ─────────────────────────────────
-      ...crudRoutes('manufacturing/work-orders'),
-      ...crudRoutes('manufacturing/production'),
-      ...crudRoutes('manufacturing/scrap'),
+      { path: 'manufacturing/work-orders', element: <LazyPage component={WorkOrdersList} /> },
+      { path: 'manufacturing/work-orders/new', element: <LazyPage component={WorkOrderForm} /> },
+      { path: 'manufacturing/work-orders/:id', element: <LazyPage component={WorkOrderForm} /> },
+      { path: 'manufacturing/production', element: <LazyPage component={ProductionEntriesList} /> },
+      { path: 'manufacturing/production/new', element: <LazyPage component={ProductionEntryForm} /> },
+      { path: 'manufacturing/production/:id', element: <LazyPage component={ProductionEntryForm} /> },
+      { path: 'manufacturing/scrap', element: <LazyPage component={ScrapEntriesList} /> },
+      { path: 'manufacturing/scrap/new', element: <LazyPage component={ScrapEntryForm} /> },
+      { path: 'manufacturing/scrap/:id', element: <LazyPage component={ScrapEntryForm} /> },
 
       // ─── Finance (2G) ───────────────────────────────────────
       { path: 'finance/accounts', element: <ComingSoon /> },

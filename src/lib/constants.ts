@@ -69,10 +69,29 @@ export const PURCHASE_ORDER_STATUSES: Record<string, StatusConfig> = {
 export const WORK_ORDER_STATUSES: Record<string, StatusConfig> = {
   draft: { label: 'Draft', color: 'gray' },
   approved: { label: 'Approved', color: 'blue' },
-  released: { label: 'Released', color: 'purple' },
+  material_issued: { label: 'Material Issued', color: 'purple' },
   in_progress: { label: 'In Progress', color: 'orange' },
   completed: { label: 'Completed', color: 'green' },
   closed: { label: 'Closed', color: 'gray' },
+  cancelled: { label: 'Cancelled', color: 'red' },
+};
+
+export const SCRAP_REASONS: Record<string, StatusConfig> = {
+  defective: { label: 'Defective', color: 'red' },
+  damaged: { label: 'Damaged', color: 'orange' },
+  expired: { label: 'Expired', color: 'yellow' },
+  process_waste: { label: 'Process Waste', color: 'gray' },
+};
+
+export const DISPOSAL_METHODS: Record<string, StatusConfig> = {
+  sell: { label: 'Sell', color: 'green' },
+  recycle: { label: 'Recycle', color: 'blue' },
+  discard: { label: 'Discard', color: 'gray' },
+};
+
+export const SCRAP_STATUSES: Record<string, StatusConfig> = {
+  recorded: { label: 'Recorded', color: 'blue' },
+  disposed: { label: 'Disposed', color: 'green' },
 };
 
 export const TRANSFER_STATUSES: Record<string, StatusConfig> = {
