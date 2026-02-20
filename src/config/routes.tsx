@@ -68,6 +68,32 @@ const UomManager = lazy(() => import('../pages/settings/UomManager').then((m) =>
 const CategoryTree = lazy(() => import('../pages/settings/CategoryTree').then((m) => ({ default: m.CategoryTree })));
 const DocumentSequences = lazy(() => import('../pages/settings/DocumentSequences').then((m) => ({ default: m.DocumentSequences })));
 
+// Masters (Step 2B)
+const CustomersList = lazy(() => import('../pages/masters/CustomersList').then((m) => ({ default: m.CustomersList })));
+const CustomerForm = lazy(() => import('../pages/masters/CustomerForm').then((m) => ({ default: m.CustomerForm })));
+const VendorsList = lazy(() => import('../pages/masters/VendorsList').then((m) => ({ default: m.VendorsList })));
+const VendorForm = lazy(() => import('../pages/masters/VendorForm').then((m) => ({ default: m.VendorForm })));
+const ItemsList = lazy(() => import('../pages/masters/ItemsList').then((m) => ({ default: m.ItemsList })));
+const ItemForm = lazy(() => import('../pages/masters/ItemForm').then((m) => ({ default: m.ItemForm })));
+const ProductsList = lazy(() => import('../pages/masters/ProductsList').then((m) => ({ default: m.ProductsList })));
+const ProductForm = lazy(() => import('../pages/masters/ProductForm').then((m) => ({ default: m.ProductForm })));
+const BomsList = lazy(() => import('../pages/masters/BomsList').then((m) => ({ default: m.BomsList })));
+const BomBuilder = lazy(() => import('../pages/masters/BomBuilder').then((m) => ({ default: m.BomBuilder })));
+
+// Sales (Step 2C)
+const QuotationsList = lazy(() => import('../pages/sales/QuotationsList').then((m) => ({ default: m.QuotationsList })));
+const QuotationForm = lazy(() => import('../pages/sales/QuotationForm').then((m) => ({ default: m.QuotationForm })));
+const SalesOrdersList = lazy(() => import('../pages/sales/SalesOrdersList').then((m) => ({ default: m.SalesOrdersList })));
+const SalesOrderForm = lazy(() => import('../pages/sales/SalesOrderForm').then((m) => ({ default: m.SalesOrderForm })));
+const DeliveryChallansList = lazy(() => import('../pages/sales/DeliveryChallansList').then((m) => ({ default: m.DeliveryChallansList })));
+const DeliveryChallanForm = lazy(() => import('../pages/sales/DeliveryChallanForm').then((m) => ({ default: m.DeliveryChallanForm })));
+const SalesInvoicesList = lazy(() => import('../pages/sales/SalesInvoicesList').then((m) => ({ default: m.SalesInvoicesList })));
+const SalesInvoiceForm = lazy(() => import('../pages/sales/SalesInvoiceForm').then((m) => ({ default: m.SalesInvoiceForm })));
+const CreditNotesList = lazy(() => import('../pages/sales/CreditNotesList').then((m) => ({ default: m.CreditNotesList })));
+const CreditNoteForm = lazy(() => import('../pages/sales/CreditNoteForm').then((m) => ({ default: m.CreditNoteForm })));
+const PaymentReceiptsList = lazy(() => import('../pages/sales/PaymentReceiptsList').then((m) => ({ default: m.PaymentReceiptsList })));
+const PaymentReceiptForm = lazy(() => import('../pages/sales/PaymentReceiptForm').then((m) => ({ default: m.PaymentReceiptForm })));
+
 // Helper to generate CRUD routes for a module
 function crudRoutes(base: string) {
   return [
@@ -106,19 +132,41 @@ export const router = createBrowserRouter([
       { path: 'settings/sequences', element: <LazyPage component={DocumentSequences} /> },
 
       // ─── Masters (2B) ───────────────────────────────────────
-      ...crudRoutes('masters/customers'),
-      ...crudRoutes('masters/vendors'),
-      ...crudRoutes('masters/items'),
-      ...crudRoutes('masters/products'),
-      ...crudRoutes('masters/boms'),
+      { path: 'masters/customers', element: <LazyPage component={CustomersList} /> },
+      { path: 'masters/customers/new', element: <LazyPage component={CustomerForm} /> },
+      { path: 'masters/customers/:id', element: <LazyPage component={CustomerForm} /> },
+      { path: 'masters/vendors', element: <LazyPage component={VendorsList} /> },
+      { path: 'masters/vendors/new', element: <LazyPage component={VendorForm} /> },
+      { path: 'masters/vendors/:id', element: <LazyPage component={VendorForm} /> },
+      { path: 'masters/items', element: <LazyPage component={ItemsList} /> },
+      { path: 'masters/items/new', element: <LazyPage component={ItemForm} /> },
+      { path: 'masters/items/:id', element: <LazyPage component={ItemForm} /> },
+      { path: 'masters/products', element: <LazyPage component={ProductsList} /> },
+      { path: 'masters/products/new', element: <LazyPage component={ProductForm} /> },
+      { path: 'masters/products/:id', element: <LazyPage component={ProductForm} /> },
+      { path: 'masters/boms', element: <LazyPage component={BomsList} /> },
+      { path: 'masters/boms/new', element: <LazyPage component={BomBuilder} /> },
+      { path: 'masters/boms/:id', element: <LazyPage component={BomBuilder} /> },
 
       // ─── Sales (2C) ─────────────────────────────────────────
-      ...crudRoutes('sales/quotations'),
-      ...crudRoutes('sales/orders'),
-      ...crudRoutes('sales/challans'),
-      ...crudRoutes('sales/invoices'),
-      ...crudRoutes('sales/credit-notes'),
-      ...crudRoutes('sales/payments'),
+      { path: 'sales/quotations', element: <LazyPage component={QuotationsList} /> },
+      { path: 'sales/quotations/new', element: <LazyPage component={QuotationForm} /> },
+      { path: 'sales/quotations/:id', element: <LazyPage component={QuotationForm} /> },
+      { path: 'sales/orders', element: <LazyPage component={SalesOrdersList} /> },
+      { path: 'sales/orders/new', element: <LazyPage component={SalesOrderForm} /> },
+      { path: 'sales/orders/:id', element: <LazyPage component={SalesOrderForm} /> },
+      { path: 'sales/challans', element: <LazyPage component={DeliveryChallansList} /> },
+      { path: 'sales/challans/new', element: <LazyPage component={DeliveryChallanForm} /> },
+      { path: 'sales/challans/:id', element: <LazyPage component={DeliveryChallanForm} /> },
+      { path: 'sales/invoices', element: <LazyPage component={SalesInvoicesList} /> },
+      { path: 'sales/invoices/new', element: <LazyPage component={SalesInvoiceForm} /> },
+      { path: 'sales/invoices/:id', element: <LazyPage component={SalesInvoiceForm} /> },
+      { path: 'sales/credit-notes', element: <LazyPage component={CreditNotesList} /> },
+      { path: 'sales/credit-notes/new', element: <LazyPage component={CreditNoteForm} /> },
+      { path: 'sales/credit-notes/:id', element: <LazyPage component={CreditNoteForm} /> },
+      { path: 'sales/payments', element: <LazyPage component={PaymentReceiptsList} /> },
+      { path: 'sales/payments/new', element: <LazyPage component={PaymentReceiptForm} /> },
+      { path: 'sales/payments/:id', element: <LazyPage component={PaymentReceiptForm} /> },
 
       // ─── Purchase (2D) ──────────────────────────────────────
       ...crudRoutes('purchase/requisitions'),
