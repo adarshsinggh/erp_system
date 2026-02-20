@@ -1,3 +1,4 @@
+// src/config/routes.tsx
 import React, { Suspense, lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -48,8 +49,24 @@ function ComingSoon() {
   );
 }
 
+// ─── Lazy Imports ───────────────────────────────────────────────
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+
+// Settings (Step 2A)
+const CompanyProfile = lazy(() => import('../pages/settings/CompanyProfile').then((m) => ({ default: m.CompanyProfile })));
+const BranchesList = lazy(() => import('../pages/settings/BranchesList').then((m) => ({ default: m.BranchesList })));
+const BranchForm = lazy(() => import('../pages/settings/BranchForm').then((m) => ({ default: m.BranchForm })));
+const WarehousesList = lazy(() => import('../pages/settings/WarehousesList').then((m) => ({ default: m.WarehousesList })));
+const WarehouseForm = lazy(() => import('../pages/settings/WarehouseForm').then((m) => ({ default: m.WarehouseForm })));
+const UsersList = lazy(() => import('../pages/settings/UsersList').then((m) => ({ default: m.UsersList })));
+const UserForm = lazy(() => import('../pages/settings/UserForm').then((m) => ({ default: m.UserForm })));
+const RolesPermissions = lazy(() => import('../pages/settings/RolesPermissions').then((m) => ({ default: m.RolesPermissions })));
+const TaxMastersList = lazy(() => import('../pages/settings/TaxMastersList').then((m) => ({ default: m.TaxMastersList })));
+const TaxMasterForm = lazy(() => import('../pages/settings/TaxMasterForm').then((m) => ({ default: m.TaxMasterForm })));
+const UomManager = lazy(() => import('../pages/settings/UomManager').then((m) => ({ default: m.UomManager })));
+const CategoryTree = lazy(() => import('../pages/settings/CategoryTree').then((m) => ({ default: m.CategoryTree })));
+const DocumentSequences = lazy(() => import('../pages/settings/DocumentSequences').then((m) => ({ default: m.DocumentSequences })));
 
 // Helper to generate CRUD routes for a module
 function crudRoutes(base: string) {
@@ -67,64 +84,83 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute><AppLayout /></ProtectedRoute>,
     children: [
       { index: true, element: <LazyPage component={DashboardPage} /> },
-      // Settings (2A)
-      { path: 'settings', element: <ComingSoon /> },
-      { path: 'settings/company', element: <ComingSoon /> },
-      ...crudRoutes('settings/branches'),
-      ...crudRoutes('settings/warehouses'),
-      ...crudRoutes('settings/users'),
-      { path: 'settings/roles', element: <ComingSoon /> },
-      ...crudRoutes('settings/taxes'),
-      { path: 'settings/uom', element: <ComingSoon /> },
-      { path: 'settings/categories', element: <ComingSoon /> },
-      { path: 'settings/sequences', element: <ComingSoon /> },
-      // Masters (2B)
+
+      // ─── Settings (2A) ──────────────────────────────────────
+      { path: 'settings', element: <Navigate to="/settings/company" replace /> },
+      { path: 'settings/company', element: <LazyPage component={CompanyProfile} /> },
+      { path: 'settings/branches', element: <LazyPage component={BranchesList} /> },
+      { path: 'settings/branches/new', element: <LazyPage component={BranchForm} /> },
+      { path: 'settings/branches/:id', element: <LazyPage component={BranchForm} /> },
+      { path: 'settings/warehouses', element: <LazyPage component={WarehousesList} /> },
+      { path: 'settings/warehouses/new', element: <LazyPage component={WarehouseForm} /> },
+      { path: 'settings/warehouses/:id', element: <LazyPage component={WarehouseForm} /> },
+      { path: 'settings/users', element: <LazyPage component={UsersList} /> },
+      { path: 'settings/users/new', element: <LazyPage component={UserForm} /> },
+      { path: 'settings/users/:id', element: <LazyPage component={UserForm} /> },
+      { path: 'settings/roles', element: <LazyPage component={RolesPermissions} /> },
+      { path: 'settings/taxes', element: <LazyPage component={TaxMastersList} /> },
+      { path: 'settings/taxes/new', element: <LazyPage component={TaxMasterForm} /> },
+      { path: 'settings/taxes/:id', element: <LazyPage component={TaxMasterForm} /> },
+      { path: 'settings/uom', element: <LazyPage component={UomManager} /> },
+      { path: 'settings/categories', element: <LazyPage component={CategoryTree} /> },
+      { path: 'settings/sequences', element: <LazyPage component={DocumentSequences} /> },
+
+      // ─── Masters (2B) ───────────────────────────────────────
       ...crudRoutes('masters/customers'),
       ...crudRoutes('masters/vendors'),
       ...crudRoutes('masters/items'),
       ...crudRoutes('masters/products'),
       ...crudRoutes('masters/boms'),
-      // Sales (2C)
+
+      // ─── Sales (2C) ─────────────────────────────────────────
       ...crudRoutes('sales/quotations'),
       ...crudRoutes('sales/orders'),
       ...crudRoutes('sales/challans'),
       ...crudRoutes('sales/invoices'),
       ...crudRoutes('sales/credit-notes'),
       ...crudRoutes('sales/payments'),
-      // Purchase (2D)
+
+      // ─── Purchase (2D) ──────────────────────────────────────
       ...crudRoutes('purchase/requisitions'),
       ...crudRoutes('purchase/orders'),
       ...crudRoutes('purchase/grn'),
       ...crudRoutes('purchase/bills'),
       ...crudRoutes('purchase/debit-notes'),
       ...crudRoutes('purchase/payments'),
-      // Inventory (2E)
+
+      // ─── Inventory (2E) ─────────────────────────────────────
       { path: 'inventory/stock', element: <ComingSoon /> },
       ...crudRoutes('inventory/transfers'),
       ...crudRoutes('inventory/adjustments'),
       { path: 'inventory/batch-serial', element: <ComingSoon /> },
-      // Manufacturing (2F)
+
+      // ─── Manufacturing (2F) ─────────────────────────────────
       ...crudRoutes('manufacturing/work-orders'),
       ...crudRoutes('manufacturing/production'),
       ...crudRoutes('manufacturing/scrap'),
-      // Finance (2G)
+
+      // ─── Finance (2G) ───────────────────────────────────────
       { path: 'finance/accounts', element: <ComingSoon /> },
       { path: 'finance/ledger', element: <ComingSoon /> },
       ...crudRoutes('finance/banks'),
       { path: 'finance/reconciliation', element: <ComingSoon /> },
-      // Approvals (2H)
+
+      // ─── Approvals (2H) ─────────────────────────────────────
       { path: 'approvals', element: <ComingSoon /> },
       { path: 'approvals/matrix', element: <ComingSoon /> },
-      // Reports (2I)
+
+      // ─── Reports (2I) ───────────────────────────────────────
       { path: 'reports/viewer', element: <ComingSoon /> },
       { path: 'reports/gst', element: <ComingSoon /> },
       { path: 'reports/insights', element: <ComingSoon /> },
-      // System (2J)
+
+      // ─── System (2J) ────────────────────────────────────────
       ...crudRoutes('system/alert-rules'),
       { path: 'system/notifications', element: <ComingSoon /> },
       { path: 'system/backups', element: <ComingSoon /> },
       { path: 'system/shortcuts', element: <ComingSoon /> },
-      // Catch-all
+
+      // ─── Catch-all ──────────────────────────────────────────
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
