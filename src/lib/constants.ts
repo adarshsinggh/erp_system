@@ -142,6 +142,31 @@ export const PRIORITY_CONFIG: Record<string, StatusConfig> = {
   urgent: { label: 'Urgent', color: 'red' },
 };
 
+// ─── Finance — Account Types ────────────────────────────────
+export const ACCOUNT_TYPES: Record<string, StatusConfig> = {
+  asset: { label: 'Asset', color: 'blue' },
+  liability: { label: 'Liability', color: 'orange' },
+  equity: { label: 'Equity', color: 'purple' },
+  revenue: { label: 'Revenue', color: 'green' },
+  expense: { label: 'Expense', color: 'red' },
+};
+
+export const VOUCHER_TYPES: Record<string, StatusConfig> = {
+  sales: { label: 'Sales', color: 'green' },
+  purchase: { label: 'Purchase', color: 'blue' },
+  receipt: { label: 'Receipt', color: 'green' },
+  payment: { label: 'Payment', color: 'orange' },
+  journal: { label: 'Journal', color: 'gray' },
+  contra: { label: 'Contra', color: 'purple' },
+};
+
+export const BANK_ACCOUNT_TYPES: Record<string, StatusConfig> = {
+  current: { label: 'Current', color: 'blue' },
+  savings: { label: 'Savings', color: 'green' },
+  od: { label: 'Overdraft', color: 'orange' },
+  cc: { label: 'Cash Credit', color: 'purple' },
+};
+
 // ─── Pagination Defaults ─────────────────────────────────────────
 export const DEFAULT_PAGE_SIZE = 25;
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];

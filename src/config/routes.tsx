@@ -125,6 +125,14 @@ const ProductionEntryForm = lazy(() => import('../pages/manufacturing/Production
 const ScrapEntriesList = lazy(() => import('../pages/manufacturing/ScrapEntriesList').then((m) => ({ default: m.ScrapEntriesList })));
 const ScrapEntryForm = lazy(() => import('../pages/manufacturing/ScrapEntryForm').then((m) => ({ default: m.ScrapEntryForm })));
 
+// Finance (Step 2G)
+const ChartOfAccountsPage = lazy(() => import('../pages/finance/ChartOfAccountsPage').then((m) => ({ default: m.ChartOfAccountsPage })));
+const LedgerPage = lazy(() => import('../pages/finance/LedgerPage').then((m) => ({ default: m.LedgerPage })));
+const BankAccountsList = lazy(() => import('../pages/finance/BankAccountsList').then((m) => ({ default: m.BankAccountsList })));
+const BankAccountForm = lazy(() => import('../pages/finance/BankAccountForm').then((m) => ({ default: m.BankAccountForm })));
+const ReconciliationPage = lazy(() => import('../pages/finance/ReconciliationPage').then((m) => ({ default: m.ReconciliationPage })));
+
+
 export const router = createBrowserRouter([
   { path: '/login', element: <LazyPage component={LoginPage} /> },
   {
@@ -227,11 +235,13 @@ export const router = createBrowserRouter([
       { path: 'manufacturing/scrap/new', element: <LazyPage component={ScrapEntryForm} /> },
       { path: 'manufacturing/scrap/:id', element: <LazyPage component={ScrapEntryForm} /> },
 
-      // ─── Finance (2G) ───────────────────────────────────────
-      { path: 'finance/accounts', element: <ComingSoon /> },
-      { path: 'finance/ledger', element: <ComingSoon /> },
-      ...crudRoutes('finance/banks'),
-      { path: 'finance/reconciliation', element: <ComingSoon /> },
+     // ─── Finance (2G) ───────────────────────────────────────
+      { path: 'finance/accounts', element: <LazyPage component={ChartOfAccountsPage} /> },
+      { path: 'finance/ledger', element: <LazyPage component={LedgerPage} /> },
+      { path: 'finance/banks', element: <LazyPage component={BankAccountsList} /> },
+      { path: 'finance/banks/new', element: <LazyPage component={BankAccountForm} /> },
+      { path: 'finance/banks/:id', element: <LazyPage component={BankAccountForm} /> },
+      { path: 'finance/reconciliation', element: <LazyPage component={ReconciliationPage} /> },
 
       // ─── Approvals (2H) ─────────────────────────────────────
       { path: 'approvals', element: <ComingSoon /> },
