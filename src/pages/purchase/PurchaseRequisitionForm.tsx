@@ -119,14 +119,14 @@ export function PurchaseRequisitionForm() {
 
   // Item search effect
   useEffect(() => {
-    if (debouncedItemSearch?.length >= 2)
+    if (debouncedItemSearch?.length >= 1)
       itemsApi.list({ search: debouncedItemSearch, limit: 10, status: 'active' }).then((r) => setItemResults(r.data || [])).catch(() => {});
     else setItemResults([]);
   }, [debouncedItemSearch]);
 
   // Vendor search effect
   useEffect(() => {
-    if (debouncedVendorSearch?.length >= 2)
+    if (debouncedVendorSearch?.length >= 1)
       vendorsApi.list({ search: debouncedVendorSearch, limit: 10, status: 'active' }).then((r) => setVendorResults(r.data || [])).catch(() => {});
     else setVendorResults([]);
   }, [debouncedVendorSearch]);
@@ -299,7 +299,7 @@ export function PurchaseRequisitionForm() {
                           onChange={(e) => { setItemSearchIdx(idx); setItemSearch(e.target.value); }}
                           onFocus={() => setItemSearchIdx(idx)} placeholder="Search item..." className="!py-1 !text-xs h-8" />
                         {itemSearchIdx === idx && itemResults.length > 0 && (
-                          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
+                          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto min-w-[320px]">
                             {itemResults.map((it) => (
                               <button key={it.id} type="button" onClick={() => selectItem(idx, it)}
                                 className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-xs">
@@ -327,7 +327,7 @@ export function PurchaseRequisitionForm() {
                           onChange={(e) => { setVendorSearchIdx(idx); setVendorSearch(e.target.value); }}
                           onFocus={() => setVendorSearchIdx(idx)} placeholder="Vendor (optional)" className="!py-1 !text-xs h-8" />
                         {vendorSearchIdx === idx && vendorResults.length > 0 && (
-                          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
+                          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto min-w-[320px]">
                             {vendorResults.map((v) => (
                               <button key={v.id} type="button" onClick={() => selectVendor(idx, v)}
                                 className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-xs">
@@ -345,7 +345,7 @@ export function PurchaseRequisitionForm() {
                       disabled={readonly} className="!py-1 !text-xs h-8 text-right" min={0} />
                   </td>
                   <td className="py-2 px-2 text-right text-xs text-gray-600">
-                    <AmountDisplay value={line.quantity * line.estimated_price} compact />
+                    <AmountDisplay value={line.quantity * line.estimated_price} />
                   </td>
                   {!readonly && (
                     <td className="py-2 px-2">

@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { vendorBillsApi, VendorBillDetail, VendorBillPayment } from '@/api/modules/vendor-bills.api';
+import { purchaseOrdersApi, PurchaseOrder } from '@/api/modules/purchase-orders.api';
+import { goodsReceiptNotesApi, GoodsReceiptNote } from '@/api/modules/goods-receipt-notes.api';
 import { vendorsApi, Vendor } from '@/api/modules/vendors.api';
 import { itemsApi, Item } from '@/api/modules/items.api';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -116,10 +118,28 @@ export function VendorBillForm() {
   const [itemResults, setItemResults] = useState<Item[]>([]);
   const debouncedItemSearch = useDebounce(itemSearch, 300);
 
+  const [poList, setPoList] = useState<PurchaseOrder[]>([]);
+  const [grnList, setGrnList] = useState<GoodsReceiptNote[]>([]);
+
   const isDraft = status === 'draft';
   const readonly = !isDraft && isEdit;
   const tdsRate = form.tds_applicable ? (parseFloat(form.tds_rate) || 0) : 0;
   const totals = calcTotals(lines, tdsRate);
+
+  // Load PO and GRN lists when vendor is selected
+  useEffect(() => {
+    if (form.vendor_id) {
+      purchaseOrdersApi.list({ vendor_id: form.vendor_id, limit: 50 })
+        .then((r) => setPoList(r.data || []))
+        .catch(() => {});
+      goodsReceiptNotesApi.list({ vendor_id: form.vendor_id, limit: 50 })
+        .then((r) => setGrnList(r.data || []))
+        .catch(() => {});
+    } else {
+      setPoList([]);
+      setGrnList([]);
+    }
+  }, [form.vendor_id]);
 
   useKeyboardShortcuts({
     'ctrl+enter': () => { if (!readonly) handleSave(); },
@@ -162,13 +182,13 @@ export function VendorBillForm() {
   }
 
   useEffect(() => {
-    if (debouncedVendorSearch?.length >= 2)
+    if (debouncedVendorSearch?.length >= 1)
       vendorsApi.list({ search: debouncedVendorSearch, limit: 10, status: 'active' }).then((r) => setVendorResults(r.data || [])).catch(() => {});
     else setVendorResults([]);
   }, [debouncedVendorSearch]);
 
   useEffect(() => {
-    if (debouncedItemSearch?.length >= 2)
+    if (debouncedItemSearch?.length >= 1)
       itemsApi.list({ search: debouncedItemSearch, limit: 10, status: 'active' }).then((r) => setItemResults(r.data || [])).catch(() => {});
     else setItemResults([]);
   }, [debouncedItemSearch]);
@@ -279,7 +299,7 @@ export function VendorBillForm() {
             <Input value={vendorSearch} onChange={(e) => { setVendorSearch(e.target.value); setShowVendorDropdown(true); }}
               onFocus={() => setShowVendorDropdown(true)} placeholder="Search vendor..." disabled={readonly} />
             {showVendorDropdown && vendorResults.length > 0 && (
-              <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
                 {vendorResults.map((v) => (
                   <button key={v.id} type="button" onClick={() => selectVendor(v)}
                     className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm">
@@ -308,12 +328,14 @@ export function VendorBillForm() {
               options={Object.entries(INDIAN_STATES).map(([code, name]) => ({ value: code, label: `${code} - ${name}` }))} disabled={readonly} />
           </FormField>
           <FormField label="PO Link">
-            <Input value={form.purchase_order_id} onChange={(e) => setForm((f) => ({ ...f, purchase_order_id: e.target.value }))}
-              placeholder="PO UUID (optional)" disabled={readonly} />
+            <Select value={form.purchase_order_id} onChange={(e) => setForm((f) => ({ ...f, purchase_order_id: e.target.value }))}
+              options={[{ value: '', label: 'Select PO (optional)...' }, ...poList.map((po) => ({ value: po.id, label: po.po_number || po.id.slice(0, 8) }))]}
+              disabled={readonly} />
           </FormField>
           <FormField label="GRN Link">
-            <Input value={form.grn_id} onChange={(e) => setForm((f) => ({ ...f, grn_id: e.target.value }))}
-              placeholder="GRN UUID (optional)" disabled={readonly} />
+            <Select value={form.grn_id} onChange={(e) => setForm((f) => ({ ...f, grn_id: e.target.value }))}
+              options={[{ value: '', label: 'Select GRN (optional)...' }, ...grnList.map((g) => ({ value: g.id, label: g.grn_number || g.id.slice(0, 8) }))]}
+              disabled={readonly} />
           </FormField>
         </div>
       </div>
@@ -351,7 +373,7 @@ export function VendorBillForm() {
                             onChange={(e) => { setItemSearchIdx(idx); setItemSearch(e.target.value); }}
                             onFocus={() => setItemSearchIdx(idx)} placeholder="Search item..." className="!py-1 !text-xs h-8" />
                           {itemSearchIdx === idx && itemResults.length > 0 && (
-                            <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
+                            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
                               {itemResults.map((it) => (
                                 <button key={it.id} type="button" onClick={() => selectItem(idx, it)}
                                   className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-xs">
@@ -378,7 +400,7 @@ export function VendorBillForm() {
                     <td className="py-2 px-2 text-xs text-gray-500 text-right">
                       {line.igst_rate > 0 ? `${line.igst_rate}%` : `${line.cgst_rate + line.sgst_rate}%`}
                     </td>
-                    <td className="py-2 px-2 text-right"><AmountDisplay value={lc.total} compact /></td>
+                    <td className="py-2 px-2 text-right"><AmountDisplay value={lc.total} /></td>
                     {!readonly && (
                       <td className="py-2 px-2">
                         <button onClick={() => removeLine(idx)} disabled={lines.length === 1}

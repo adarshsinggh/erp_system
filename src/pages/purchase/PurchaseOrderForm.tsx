@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { purchaseOrdersApi, PurchaseOrderDetail } from '@/api/modules/purchase-orders.api';
 import { vendorsApi, Vendor } from '@/api/modules/vendors.api';
 import { itemsApi, Item } from '@/api/modules/items.api';
+import { settingsApi, Warehouse } from '@/api/modules/settings.api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { AmountDisplay } from '@/components/shared/AmountDisplay';
@@ -90,9 +91,15 @@ export function PurchaseOrderForm() {
   const [itemResults, setItemResults] = useState<Item[]>([]);
   const debouncedItemSearch = useDebounce(itemSearch, 300);
 
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+
   const isDraft = status === 'draft';
   const readonly = !isDraft && isEdit;
   const totals = calcTotals(lines);
+
+  useEffect(() => {
+    settingsApi.listWarehouses().then((r) => setWarehouses(r.data || [])).catch(() => {});
+  }, []);
 
   useKeyboardShortcuts({
     'ctrl+enter': () => { if (!readonly) handleSave(); },
@@ -133,20 +140,24 @@ export function PurchaseOrderForm() {
   }
 
   useEffect(() => {
-    if (debouncedVendorSearch?.length >= 2)
+    if (debouncedVendorSearch?.length >= 1)
       vendorsApi.list({ search: debouncedVendorSearch, limit: 10, status: 'active' }).then((r) => setVendorResults(r.data || [])).catch(() => {});
     else setVendorResults([]);
   }, [debouncedVendorSearch]);
 
   useEffect(() => {
-    if (debouncedItemSearch?.length >= 2)
+    if (debouncedItemSearch?.length >= 1)
       itemsApi.list({ search: debouncedItemSearch, limit: 10, status: 'active' }).then((r) => setItemResults(r.data || [])).catch(() => {});
     else setItemResults([]);
   }, [debouncedItemSearch]);
 
   function selectVendor(v: Vendor) {
     setSelectedVendor(v); setVendorSearch(v.name);
-    setForm((f) => ({ ...f, vendor_id: v.id })); setShowVendorDropdown(false);
+    setForm((f) => ({
+      ...f, vendor_id: v.id,
+      payment_terms_days: v.payment_terms_days ? String(v.payment_terms_days) : f.payment_terms_days,
+    }));
+    setShowVendorDropdown(false);
   }
   function selectItem(idx: number, item: Item) {
     setLines((prev) => prev.map((line, i) => i === idx ? {
@@ -251,7 +262,7 @@ export function PurchaseOrderForm() {
             <Input value={vendorSearch} onChange={(e) => { setVendorSearch(e.target.value); setShowVendorDropdown(true); }}
               onFocus={() => setShowVendorDropdown(true)} placeholder="Search vendor..." disabled={readonly} />
             {showVendorDropdown && vendorResults.length > 0 && (
-              <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
                 {vendorResults.map((v) => (
                   <button key={v.id} type="button" onClick={() => selectVendor(v)}
                     className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm">
@@ -276,8 +287,9 @@ export function PurchaseOrderForm() {
               options={[{ value: 'INR', label: 'INR - Indian Rupee' }, { value: 'USD', label: 'USD - US Dollar' }]} disabled={readonly} />
           </FormField>
           <FormField label="Warehouse">
-            <Input value={form.warehouse_id} onChange={(e) => setForm((f) => ({ ...f, warehouse_id: e.target.value }))}
-              placeholder="Select warehouse" disabled={readonly} />
+            <Select value={form.warehouse_id} onChange={(e) => setForm((f) => ({ ...f, warehouse_id: e.target.value }))}
+              options={[{ value: '', label: 'Select warehouse...' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]}
+              disabled={readonly} />
           </FormField>
         </div>
       </div>
@@ -318,7 +330,7 @@ export function PurchaseOrderForm() {
                             onChange={(e) => { setItemSearchIdx(idx); setItemSearch(e.target.value); }}
                             onFocus={() => setItemSearchIdx(idx)} placeholder="Search item..." className="!py-1 !text-xs h-8" />
                           {itemSearchIdx === idx && itemResults.length > 0 && (
-                            <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
+                            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
                               {itemResults.map((it) => (
                                 <button key={it.id} type="button" onClick={() => selectItem(idx, it)}
                                   className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-xs">
@@ -349,7 +361,7 @@ export function PurchaseOrderForm() {
                     <td className="py-2 px-2 text-xs text-gray-500 text-right">
                       {line.igst_rate > 0 ? `${line.igst_rate}%` : `${line.cgst_rate + line.sgst_rate}%`}
                     </td>
-                    <td className="py-2 px-2 text-right"><AmountDisplay value={lc.total} compact /></td>
+                    <td className="py-2 px-2 text-right"><AmountDisplay value={lc.total} /></td>
                     {readonly && <td className="py-2 px-2 text-right text-xs text-gray-500">{line.received_quantity || 0}</td>}
                     {readonly && <td className="py-2 px-2 text-right text-xs text-gray-500">{line.billed_quantity || 0}</td>}
                     {!readonly && (

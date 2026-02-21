@@ -1,30 +1,26 @@
 // =============================================================
-// File: server/routes/purchase-orders.ts
+// File: server/routes/vendor-bills.ts
 // Module: Purchase Management
-// Description: REST API routes for Purchase Orders.
+// Description: REST API routes for Vendor Bills.
 //              Endpoints: create, list, get, update, delete,
-//              approve, send, cancel, close,
-//              create from requisition.
+//              approve, cancel, vendor outstanding.
 // =============================================================
 
 import { FastifyInstance } from 'fastify';
 import { authenticate } from '../plugins/auth.plugin';
-import { purchaseOrderService } from '../services/purchase-order.service';
+import { vendorBillService } from '../services/vendor-bill.service';
 
-export async function purchaseOrderRoutes(server: FastifyInstance) {
+export async function vendorBillRoutes(server: FastifyInstance) {
   // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders — Create standalone purchase order
+  // POST /vendor-bills — Create vendor bill
   // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders', { preHandler: [authenticate] }, async (request, reply) => {
+  server.post('/vendor-bills', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const body = request.body as any;
 
       // Validation
       if (!body.vendor_id) {
         return reply.code(400).send({ success: false, error: 'vendor_id is required' });
-      }
-      if (!body.po_date) {
-        return reply.code(400).send({ success: false, error: 'po_date is required' });
       }
       if (!body.lines || !Array.isArray(body.lines) || body.lines.length === 0) {
         return reply.code(400).send({ success: false, error: 'At least one line item is required' });
@@ -47,21 +43,35 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
       }
 
       const user = request.user!;
-      const purchaseOrder = await purchaseOrderService.createPurchaseOrder({
+
+      // Map frontend fields to service fields
+      const billDate = body.vendor_bill_date || body.bill_date || new Date().toISOString().split('T')[0];
+
+      const metadata = {
+        ...body.metadata,
+        received_date: body.received_date,
+        place_of_supply: body.place_of_supply,
+        tds_applicable: body.tds_applicable,
+        tds_section: body.tds_section,
+      };
+
+      const vendorBill = await vendorBillService.createVendorBill({
         company_id: user.companyId,
         branch_id: body.branch_id || user.branchId,
-        po_date: body.po_date,
-        expected_delivery_date: body.expected_delivery_date || undefined,
         vendor_id: body.vendor_id,
-        requisition_id: body.requisition_id || undefined,
-        vendor_quotation_ref: body.vendor_quotation_ref || undefined,
-        currency_code: body.currency_code || 'INR',
-        exchange_rate: body.exchange_rate,
-        payment_terms_days: body.payment_terms_days,
-        terms_and_conditions: body.terms_and_conditions,
+        vendor_bill_number: body.vendor_bill_number || body.vendor_invoice_number,
+        vendor_bill_date: billDate,
+        received_date: body.received_date,
+        due_date: body.due_date,
+        purchase_order_id: body.purchase_order_id || undefined,
+        grn_id: body.grn_id || undefined,
+        place_of_supply: body.place_of_supply,
+        currency_code: body.currency_code,
+        tds_applicable: body.tds_applicable,
+        tds_section: body.tds_section,
+        tds_rate: body.tds_rate,
         internal_notes: body.internal_notes,
-        delivery_warehouse_id: body.delivery_warehouse_id || body.warehouse_id || undefined,
-        metadata: body.metadata,
+        metadata,
         lines: body.lines.map((l: any, idx: number) => ({
           line_number: l.line_number || idx + 1,
           item_id: l.item_id,
@@ -70,13 +80,13 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
           uom_id: l.uom_id,
           unit_price: parseFloat(l.unit_price),
           discount_amount: l.discount_amount ? parseFloat(l.discount_amount) : undefined,
-          hsn_code: l.hsn_code || undefined,
-          warehouse_id: l.warehouse_id || undefined,
+          hsn_code: l.hsn_code,
+          grn_line_id: l.grn_line_id,
         })),
         created_by: user.userId,
       });
 
-      return reply.code(201).send({ success: true, data: purchaseOrder });
+      return reply.code(201).send({ success: true, data: vendorBill });
     } catch (error: any) {
       const statusCode = error.message.includes('not found') ? 404 : 400;
       return reply.code(statusCode).send({ success: false, error: error.message });
@@ -84,69 +94,29 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders/from-requisition — Create PO from
-  // an approved purchase requisition
+  // GET /vendor-bills — List vendor bills (paginated)
   // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders/from-requisition', { preHandler: [authenticate] }, async (request, reply) => {
-    try {
-      const body = request.body as any;
-
-      if (!body.requisition_id) {
-        return reply.code(400).send({ success: false, error: 'requisition_id is required' });
-      }
-
-      const user = request.user!;
-
-      const purchaseOrder = await purchaseOrderService.createFromRequisition(
-        body.requisition_id,
-        user.companyId,
-        user.userId,
-        {
-          branch_id: body.branch_id,
-          vendor_id: body.vendor_id,
-          po_date: body.po_date,
-          expected_delivery_date: body.expected_delivery_date,
-          vendor_quotation_ref: body.vendor_quotation_ref,
-          payment_terms_days: body.payment_terms_days,
-          delivery_warehouse_id: body.delivery_warehouse_id,
-          internal_notes: body.internal_notes,
-          line_overrides: body.line_overrides,
-        }
-      );
-
-      return reply.code(201).send({
-        success: true,
-        message: 'Purchase order created from requisition',
-        data: purchaseOrder,
-      });
-    } catch (error: any) {
-      const statusCode = error.message.includes('not found') ? 404 : 400;
-      return reply.code(statusCode).send({ success: false, error: error.message });
-    }
-  });
-
-  // ──────────────────────────────────────────────────────────
-  // GET /purchase-orders — List purchase orders (paginated)
-  // ──────────────────────────────────────────────────────────
-  server.get('/purchase-orders', { preHandler: [authenticate] }, async (request) => {
+  server.get('/vendor-bills', { preHandler: [authenticate] }, async (request) => {
     const {
       page, limit, search, status,
-      vendor_id, branch_id,
+      vendor_id, purchase_order_id,
+      overdue_only,
       from_date, to_date,
       sort_by, sort_order,
     } = request.query as any;
 
-    const result = await purchaseOrderService.listPurchaseOrders({
+    const result = await vendorBillService.listVendorBills({
       companyId: request.user!.companyId,
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 50,
       search,
       status,
       vendor_id,
-      branch_id: branch_id || undefined,
+      purchase_order_id,
+      overdue_only: overdue_only === 'true' || overdue_only === true,
       from_date,
       to_date,
-      sortBy: sort_by || 'po_date',
+      sortBy: sort_by || 'bill_date',
       sortOrder: sort_order || 'desc',
     });
 
@@ -154,23 +124,41 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // GET /purchase-orders/:id — Get PO with full details
+  // GET /vendor-bills/outstanding/:vendorId — Get vendor outstanding
+  // (registered before /:id to avoid route conflict)
   // ──────────────────────────────────────────────────────────
-  server.get('/purchase-orders/:id', { preHandler: [authenticate] }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const purchaseOrder = await purchaseOrderService.getPurchaseOrderWithDetails(id, request.user!.companyId);
-
-    if (!purchaseOrder) {
-      return reply.code(404).send({ success: false, error: 'Purchase order not found' });
+  server.get('/vendor-bills/outstanding/:vendorId', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const { vendorId } = request.params as { vendorId: string };
+      const outstanding = await vendorBillService.getVendorOutstanding(
+        vendorId,
+        request.user!.companyId
+      );
+      return { success: true, data: outstanding };
+    } catch (error: any) {
+      const statusCode = error.message.includes('not found') ? 404 : 400;
+      return reply.code(statusCode).send({ success: false, error: error.message });
     }
-
-    return { success: true, data: purchaseOrder };
   });
 
   // ──────────────────────────────────────────────────────────
-  // PUT /purchase-orders/:id — Update PO (draft only)
+  // GET /vendor-bills/:id — Get vendor bill with full details
   // ──────────────────────────────────────────────────────────
-  server.put('/purchase-orders/:id', { preHandler: [authenticate] }, async (request, reply) => {
+  server.get('/vendor-bills/:id', { preHandler: [authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const vendorBill = await vendorBillService.getVendorBillWithDetails(id, request.user!.companyId);
+
+    if (!vendorBill) {
+      return reply.code(404).send({ success: false, error: 'Vendor bill not found' });
+    }
+
+    return { success: true, data: vendorBill };
+  });
+
+  // ──────────────────────────────────────────────────────────
+  // PUT /vendor-bills/:id — Update vendor bill (draft only)
+  // ──────────────────────────────────────────────────────────
+  server.put('/vendor-bills/:id', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
       const body = request.body as any;
@@ -198,16 +186,8 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
       }
 
       const user = request.user!;
-      const updated = await purchaseOrderService.updatePurchaseOrder(id, user.companyId, {
-        expected_delivery_date: body.expected_delivery_date || undefined,
-        vendor_id: body.vendor_id || undefined,
-        vendor_quotation_ref: body.vendor_quotation_ref || undefined,
-        currency_code: body.currency_code || undefined,
-        exchange_rate: body.exchange_rate,
-        payment_terms_days: body.payment_terms_days,
-        terms_and_conditions: body.terms_and_conditions,
-        internal_notes: body.internal_notes,
-        delivery_warehouse_id: body.delivery_warehouse_id || body.warehouse_id || undefined,
+      const updated = await vendorBillService.updateVendorBill(id, user.companyId, {
+        ...body,
         lines: body.lines?.map((l: any, idx: number) => ({
           line_number: l.line_number || idx + 1,
           item_id: l.item_id,
@@ -216,8 +196,8 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
           uom_id: l.uom_id,
           unit_price: parseFloat(l.unit_price),
           discount_amount: l.discount_amount ? parseFloat(l.discount_amount) : undefined,
-          hsn_code: l.hsn_code || undefined,
-          warehouse_id: l.warehouse_id || undefined,
+          hsn_code: l.hsn_code,
+          grn_line_id: l.grn_line_id,
         })),
         updated_by: user.userId,
       });
@@ -230,17 +210,17 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // DELETE /purchase-orders/:id — Soft delete (draft only)
+  // DELETE /vendor-bills/:id — Soft delete (draft only)
   // ──────────────────────────────────────────────────────────
-  server.delete('/purchase-orders/:id', { preHandler: [authenticate] }, async (request, reply) => {
+  server.delete('/vendor-bills/:id', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      const deleted = await purchaseOrderService.deletePurchaseOrder(
+      const deleted = await vendorBillService.deleteVendorBill(
         id,
         request.user!.companyId,
         request.user!.userId
       );
-      return { success: true, message: 'Purchase order deleted', data: deleted };
+      return { success: true, message: 'Vendor bill deleted', data: deleted };
     } catch (error: any) {
       const statusCode = error.message.includes('not found') ? 404 : 400;
       return reply.code(statusCode).send({ success: false, error: error.message });
@@ -248,19 +228,19 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders/:id/approve — Approve (draft → approved)
+  // POST /vendor-bills/:id/approve — Approve (draft → approved)
   // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders/:id/approve', { preHandler: [authenticate] }, async (request, reply) => {
+  server.post('/vendor-bills/:id/approve', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      const approved = await purchaseOrderService.approvePurchaseOrder(
+      const approved = await vendorBillService.approveVendorBill(
         id,
         request.user!.companyId,
         request.user!.userId
       );
       return {
         success: true,
-        message: 'Purchase order approved',
+        message: 'Vendor bill approved',
         data: approved,
       };
     } catch (error: any) {
@@ -270,64 +250,20 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders/:id/send — Send to vendor (approved → sent)
+  // POST /vendor-bills/:id/cancel — Cancel vendor bill
   // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders/:id/send', { preHandler: [authenticate] }, async (request, reply) => {
+  server.post('/vendor-bills/:id/cancel', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      const sent = await purchaseOrderService.sendPurchaseOrder(
+      const cancelled = await vendorBillService.cancelVendorBill(
         id,
         request.user!.companyId,
         request.user!.userId
       );
       return {
         success: true,
-        message: 'Purchase order sent to vendor',
-        data: sent,
-      };
-    } catch (error: any) {
-      const statusCode = error.message.includes('not found') ? 404 : 400;
-      return reply.code(statusCode).send({ success: false, error: error.message });
-    }
-  });
-
-  // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders/:id/cancel — Cancel PO
-  // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders/:id/cancel', { preHandler: [authenticate] }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      const cancelled = await purchaseOrderService.cancelPurchaseOrder(
-        id,
-        request.user!.companyId,
-        request.user!.userId
-      );
-      return {
-        success: true,
-        message: 'Purchase order cancelled',
+        message: 'Vendor bill cancelled',
         data: cancelled,
-      };
-    } catch (error: any) {
-      const statusCode = error.message.includes('not found') ? 404 : 400;
-      return reply.code(statusCode).send({ success: false, error: error.message });
-    }
-  });
-
-  // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders/:id/close — Close PO
-  // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders/:id/close', { preHandler: [authenticate] }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      const closed = await purchaseOrderService.closePurchaseOrder(
-        id,
-        request.user!.companyId,
-        request.user!.userId
-      );
-      return {
-        success: true,
-        message: 'Purchase order closed',
-        data: closed,
       };
     } catch (error: any) {
       const statusCode = error.message.includes('not found') ? 404 : 400;

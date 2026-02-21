@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { goodsReceiptNotesApi, GoodsReceiptNote, GRNDetail } from '@/api/modules/goods-receipt-notes.api';
+import { purchaseOrdersApi, PurchaseOrder } from '@/api/modules/purchase-orders.api';
 import { vendorsApi, Vendor } from '@/api/modules/vendors.api';
 import { itemsApi, Item } from '@/api/modules/items.api';
+import { settingsApi, Warehouse } from '@/api/modules/settings.api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FormField, Input, Select, Textarea, ConfirmDialog, toast } from '@/components/shared/FormElements';
@@ -81,8 +83,26 @@ export function GoodsReceiptNoteForm() {
   const [itemResults, setItemResults] = useState<Item[]>([]);
   const debouncedItemSearch = useDebounce(itemSearch, 300);
 
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [poList, setPoList] = useState<PurchaseOrder[]>([]);
+
   const isDraft = status === 'draft';
   const readonly = !isDraft && isEdit;
+
+  useEffect(() => {
+    settingsApi.listWarehouses().then((r) => setWarehouses(r.data || [])).catch(() => {});
+  }, []);
+
+  // Load PO list when vendor is selected
+  useEffect(() => {
+    if (form.vendor_id) {
+      purchaseOrdersApi.list({ vendor_id: form.vendor_id, status: 'sent', limit: 50 })
+        .then((r) => setPoList(r.data || []))
+        .catch(() => {});
+    } else {
+      setPoList([]);
+    }
+  }, [form.vendor_id]);
 
   useKeyboardShortcuts({
     'ctrl+enter': () => { if (!readonly) handleSave(); },
@@ -124,13 +144,13 @@ export function GoodsReceiptNoteForm() {
   }
 
   useEffect(() => {
-    if (debouncedVendorSearch?.length >= 2)
+    if (debouncedVendorSearch?.length >= 1)
       vendorsApi.list({ search: debouncedVendorSearch, limit: 10, status: 'active' }).then((r) => setVendorResults(r.data || [])).catch(() => {});
     else setVendorResults([]);
   }, [debouncedVendorSearch]);
 
   useEffect(() => {
-    if (debouncedItemSearch?.length >= 2)
+    if (debouncedItemSearch?.length >= 1)
       itemsApi.list({ search: debouncedItemSearch, limit: 10, status: 'active' }).then((r) => setItemResults(r.data || [])).catch(() => {});
     else setItemResults([]);
   }, [debouncedItemSearch]);
@@ -245,7 +265,7 @@ export function GoodsReceiptNoteForm() {
             <Input value={vendorSearch} onChange={(e) => { setVendorSearch(e.target.value); setShowVendorDropdown(true); }}
               onFocus={() => setShowVendorDropdown(true)} placeholder="Search vendor..." disabled={readonly} />
             {showVendorDropdown && vendorResults.length > 0 && (
-              <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
                 {vendorResults.map((v) => (
                   <button key={v.id} type="button" onClick={() => selectVendor(v)}
                     className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm">
@@ -260,12 +280,14 @@ export function GoodsReceiptNoteForm() {
             <Input type="date" value={form.grn_date} onChange={(e) => setForm((f) => ({ ...f, grn_date: e.target.value }))} disabled={readonly} />
           </FormField>
           <FormField label="Purchase Order">
-            <Input value={form.purchase_order_id} onChange={(e) => setForm((f) => ({ ...f, purchase_order_id: e.target.value }))}
-              placeholder="PO UUID (optional)" disabled={readonly} />
+            <Select value={form.purchase_order_id} onChange={(e) => setForm((f) => ({ ...f, purchase_order_id: e.target.value }))}
+              options={[{ value: '', label: 'Select PO (optional)...' }, ...poList.map((po) => ({ value: po.id, label: `${po.po_number || po.id.slice(0, 8)}` }))]}
+              disabled={readonly} />
           </FormField>
           <FormField label="Warehouse">
-            <Input value={form.warehouse_id} onChange={(e) => setForm((f) => ({ ...f, warehouse_id: e.target.value }))}
-              placeholder="Warehouse UUID" disabled={readonly} />
+            <Select value={form.warehouse_id} onChange={(e) => setForm((f) => ({ ...f, warehouse_id: e.target.value }))}
+              options={[{ value: '', label: 'Select warehouse...' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]}
+              disabled={readonly} />
           </FormField>
           <FormField label="Inspection Status">
             <Select value={form.inspection_status} onChange={(e) => setForm((f) => ({ ...f, inspection_status: e.target.value as GoodsReceiptNote['inspection_status'] }))}
@@ -320,7 +342,7 @@ export function GoodsReceiptNoteForm() {
                           onChange={(e) => { setItemSearchIdx(idx); setItemSearch(e.target.value); }}
                           onFocus={() => setItemSearchIdx(idx)} placeholder="Search item..." className="!py-1 !text-xs h-8" />
                         {itemSearchIdx === idx && itemResults.length > 0 && (
-                          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
+                          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
                             {itemResults.map((it) => (
                               <button key={it.id} type="button" onClick={() => selectItem(idx, it)}
                                 className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-xs">

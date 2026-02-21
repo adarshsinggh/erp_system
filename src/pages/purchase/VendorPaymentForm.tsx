@@ -24,6 +24,8 @@ const PAYMENT_MODES = [
   { value: 'cheque', label: 'Cheque' },
   { value: 'upi', label: 'UPI' },
   { value: 'card', label: 'Card' },
+  { value: 'neft', label: 'NEFT' },
+  { value: 'rtgs', label: 'RTGS' },
 ];
 
 export function VendorPaymentForm() {
@@ -49,6 +51,7 @@ export function VendorPaymentForm() {
   });
   const [billInfo, setBillInfo] = useState<{ bill_number: string; grand_total: number; amount_due: number } | null>(null);
   const [outstanding, setOutstanding] = useState<VendorOutstanding | null>(null);
+  const [billList, setBillList] = useState<{ id: string; bill_number: string; grand_total: number; amount_due: number }[]>([]);
 
   const [vendorSearch, setVendorSearch] = useState('');
   const [vendorResults, setVendorResults] = useState<Vendor[]>([]);
@@ -67,11 +70,17 @@ export function VendorPaymentForm() {
 
   useEffect(() => { if (isEdit) loadPayment(); }, [id]);
 
-  // Load vendor outstanding when vendor changes
+  // Load vendor outstanding and bill list when vendor changes
   useEffect(() => {
     if (form.vendor_id) {
       vendorBillsApi.getVendorOutstanding(form.vendor_id)
         .then((res) => setOutstanding(res.data))
+        .catch(() => {});
+      vendorBillsApi.list({ vendor_id: form.vendor_id, status: 'approved', limit: 50 })
+        .then((res) => setBillList((res.data || []).map((b: any) => ({
+          id: b.id, bill_number: b.bill_number || b.vendor_bill_number || b.id.slice(0, 8),
+          grand_total: b.grand_total || 0, amount_due: b.amount_due || 0,
+        }))))
         .catch(() => {});
     }
   }, [form.vendor_id]);
@@ -99,7 +108,7 @@ export function VendorPaymentForm() {
   }
 
   useEffect(() => {
-    if (debouncedVendorSearch?.length >= 2)
+    if (debouncedVendorSearch?.length >= 1)
       vendorsApi.list({ search: debouncedVendorSearch, limit: 10, status: 'active' }).then((r) => setVendorResults(r.data || [])).catch(() => {});
     else setVendorResults([]);
   }, [debouncedVendorSearch]);
@@ -194,7 +203,7 @@ export function VendorPaymentForm() {
                 <Input value={vendorSearch} onChange={(e) => { setVendorSearch(e.target.value); setShowVendorDropdown(true); }}
                   onFocus={() => setShowVendorDropdown(true)} placeholder="Search vendor..." disabled={readonly} />
                 {showVendorDropdown && vendorResults.length > 0 && (
-                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
                     {vendorResults.map((v) => (
                       <button key={v.id} type="button" onClick={() => selectVendor(v)}
                         className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm">
@@ -217,8 +226,9 @@ export function VendorPaymentForm() {
                   options={PAYMENT_MODES} disabled={readonly} />
               </FormField>
               <FormField label="Vendor Bill (optional)">
-                <Input value={form.vendor_bill_id} onChange={(e) => setForm((f) => ({ ...f, vendor_bill_id: e.target.value }))}
-                  placeholder="Bill UUID" disabled={readonly} />
+                <Select value={form.vendor_bill_id} onChange={(e) => setForm((f) => ({ ...f, vendor_bill_id: e.target.value }))}
+                  options={[{ value: '', label: 'Select bill...' }, ...billList.map((b) => ({ value: b.id, label: `${b.bill_number} — Due: ₹${b.amount_due.toLocaleString()}` }))]}
+                  disabled={readonly} />
               </FormField>
               <FormField label="Advance Payment">
                 <label className="flex items-center gap-2 mt-2">
@@ -241,7 +251,7 @@ export function VendorPaymentForm() {
                 </FormField>
               </div>
             )}
-            {(form.payment_mode === 'bank_transfer' || form.payment_mode === 'upi') && (
+            {(['bank_transfer', 'upi', 'neft', 'rtgs'].includes(form.payment_mode)) && (
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <FormField label="Transaction Reference">
                   <Input value={form.transaction_reference} onChange={(e) => setForm((f) => ({ ...f, transaction_reference: e.target.value }))}

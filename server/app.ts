@@ -49,6 +49,11 @@ import { auditComplianceRoutes } from './routes/audit-compliance';
 import { syncRoutes } from './routes/sync';
 // Phase 6: Purchase Management
 import { purchaseOrderRoutes } from './routes/purchase-orders';
+import { purchaseRequisitionRoutes } from './routes/purchase-requisitions';
+import { goodsReceiptNoteRoutes } from './routes/goods-receipt-notes';
+import { vendorBillRoutes } from './routes/vendor-bills';
+import { debitNoteRoutes } from './routes/debit-notes';
+import { vendorPaymentRoutes } from './routes/vendor-payments';
 // Phase 16: UI/UX Polish — Dashboard & Shortcuts
 import { dashboardRoutes } from './routes/dashboard';
 
@@ -107,6 +112,11 @@ export async function buildServer() {
   await server.register(paymentReceiptRoutes, { prefix: '/api' });
   // Phase 6: Purchase Management
   await server.register(purchaseOrderRoutes, { prefix: '/api' });
+  await server.register(purchaseRequisitionRoutes, { prefix: '/api' });
+  await server.register(goodsReceiptNoteRoutes, { prefix: '/api' });
+  await server.register(vendorBillRoutes, { prefix: '/api' });
+  await server.register(debitNoteRoutes, { prefix: '/api' });
+  await server.register(vendorPaymentRoutes, { prefix: '/api' });
   // Phase 7: Inventory Management
   await server.register(inventoryRoutes, { prefix: '/api' });
   await server.register(stockTransferRoutes, { prefix: '/api' });

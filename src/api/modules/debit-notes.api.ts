@@ -24,7 +24,29 @@ export interface DebitNote {
   created_at: string;
 }
 
-export interface DebitNoteDetail extends DebitNote {}
+export interface DebitNoteLine {
+  id: string;
+  item_id: string;
+  item_code?: string;
+  item_name?: string;
+  description: string;
+  quantity: number;
+  uom_id: string;
+  uom_code?: string;
+  unit_price: number;
+  hsn_code: string;
+  cgst_rate: number;
+  sgst_rate: number;
+  igst_rate: number;
+  cgst_amount?: number;
+  sgst_amount?: number;
+  igst_amount?: number;
+  line_total?: number;
+}
+
+export interface DebitNoteDetail extends DebitNote {
+  lines: DebitNoteLine[];
+}
 
 export interface DebitNoteListParams extends ListParams {
   vendor_id?: string;

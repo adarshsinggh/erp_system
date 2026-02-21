@@ -1,30 +1,27 @@
 // =============================================================
-// File: server/routes/purchase-orders.ts
+// File: server/routes/purchase-requisitions.ts
 // Module: Purchase Management
-// Description: REST API routes for Purchase Orders.
+// Description: REST API routes for Purchase Requisitions.
 //              Endpoints: create, list, get, update, delete,
-//              approve, send, cancel, close,
-//              create from requisition.
+//              submit, approve, reject, convert to PO.
 // =============================================================
 
 import { FastifyInstance } from 'fastify';
 import { authenticate } from '../plugins/auth.plugin';
+import { purchaseRequisitionService } from '../services/purchase-requisition.service';
 import { purchaseOrderService } from '../services/purchase-order.service';
 
-export async function purchaseOrderRoutes(server: FastifyInstance) {
+export async function purchaseRequisitionRoutes(server: FastifyInstance) {
   // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders — Create standalone purchase order
+  // POST /purchase-requisitions — Create purchase requisition
   // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders', { preHandler: [authenticate] }, async (request, reply) => {
+  server.post('/purchase-requisitions', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const body = request.body as any;
 
       // Validation
-      if (!body.vendor_id) {
-        return reply.code(400).send({ success: false, error: 'vendor_id is required' });
-      }
-      if (!body.po_date) {
-        return reply.code(400).send({ success: false, error: 'po_date is required' });
+      if (!body.requisition_date) {
+        return reply.code(400).send({ success: false, error: 'requisition_date is required' });
       }
       if (!body.lines || !Array.isArray(body.lines) || body.lines.length === 0) {
         return reply.code(400).send({ success: false, error: 'At least one line item is required' });
@@ -41,42 +38,36 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
         if (!line.uom_id) {
           return reply.code(400).send({ success: false, error: `Line ${i + 1}: uom_id is required` });
         }
-        if (line.unit_price === undefined || line.unit_price === null || line.unit_price < 0) {
-          return reply.code(400).send({ success: false, error: `Line ${i + 1}: unit_price is required and must be >= 0` });
-        }
       }
 
       const user = request.user!;
-      const purchaseOrder = await purchaseOrderService.createPurchaseOrder({
+      const requisition = await purchaseRequisitionService.createRequisition({
         company_id: user.companyId,
         branch_id: body.branch_id || user.branchId,
-        po_date: body.po_date,
-        expected_delivery_date: body.expected_delivery_date || undefined,
-        vendor_id: body.vendor_id,
-        requisition_id: body.requisition_id || undefined,
-        vendor_quotation_ref: body.vendor_quotation_ref || undefined,
-        currency_code: body.currency_code || 'INR',
-        exchange_rate: body.exchange_rate,
-        payment_terms_days: body.payment_terms_days,
-        terms_and_conditions: body.terms_and_conditions,
+        requisition_date: body.requisition_date,
+        required_by_date: body.required_by_date,
+        priority: body.priority,
+        purpose: body.purpose || body.justification,
+        department: body.department,
         internal_notes: body.internal_notes,
-        delivery_warehouse_id: body.delivery_warehouse_id || body.warehouse_id || undefined,
-        metadata: body.metadata,
+        metadata: {
+          ...body.metadata,
+          ...(body.source ? { source: body.source } : {}),
+        },
         lines: body.lines.map((l: any, idx: number) => ({
           line_number: l.line_number || idx + 1,
           item_id: l.item_id,
           description: l.description,
           quantity: parseFloat(l.quantity),
           uom_id: l.uom_id,
-          unit_price: parseFloat(l.unit_price),
-          discount_amount: l.discount_amount ? parseFloat(l.discount_amount) : undefined,
-          hsn_code: l.hsn_code || undefined,
-          warehouse_id: l.warehouse_id || undefined,
+          estimated_price: l.estimated_price ? parseFloat(l.estimated_price) : undefined,
+          preferred_vendor_id: l.preferred_vendor_id,
+          remarks: l.remarks,
         })),
         created_by: user.userId,
       });
 
-      return reply.code(201).send({ success: true, data: purchaseOrder });
+      return reply.code(201).send({ success: true, data: requisition });
     } catch (error: any) {
       const statusCode = error.message.includes('not found') ? 404 : 400;
       return reply.code(statusCode).send({ success: false, error: error.message });
@@ -84,69 +75,27 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders/from-requisition — Create PO from
-  // an approved purchase requisition
+  // GET /purchase-requisitions — List requisitions (paginated)
   // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders/from-requisition', { preHandler: [authenticate] }, async (request, reply) => {
-    try {
-      const body = request.body as any;
-
-      if (!body.requisition_id) {
-        return reply.code(400).send({ success: false, error: 'requisition_id is required' });
-      }
-
-      const user = request.user!;
-
-      const purchaseOrder = await purchaseOrderService.createFromRequisition(
-        body.requisition_id,
-        user.companyId,
-        user.userId,
-        {
-          branch_id: body.branch_id,
-          vendor_id: body.vendor_id,
-          po_date: body.po_date,
-          expected_delivery_date: body.expected_delivery_date,
-          vendor_quotation_ref: body.vendor_quotation_ref,
-          payment_terms_days: body.payment_terms_days,
-          delivery_warehouse_id: body.delivery_warehouse_id,
-          internal_notes: body.internal_notes,
-          line_overrides: body.line_overrides,
-        }
-      );
-
-      return reply.code(201).send({
-        success: true,
-        message: 'Purchase order created from requisition',
-        data: purchaseOrder,
-      });
-    } catch (error: any) {
-      const statusCode = error.message.includes('not found') ? 404 : 400;
-      return reply.code(statusCode).send({ success: false, error: error.message });
-    }
-  });
-
-  // ──────────────────────────────────────────────────────────
-  // GET /purchase-orders — List purchase orders (paginated)
-  // ──────────────────────────────────────────────────────────
-  server.get('/purchase-orders', { preHandler: [authenticate] }, async (request) => {
+  server.get('/purchase-requisitions', { preHandler: [authenticate] }, async (request) => {
     const {
       page, limit, search, status,
-      vendor_id, branch_id,
+      priority, branch_id,
       from_date, to_date,
       sort_by, sort_order,
     } = request.query as any;
 
-    const result = await purchaseOrderService.listPurchaseOrders({
+    const result = await purchaseRequisitionService.listRequisitions({
       companyId: request.user!.companyId,
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 50,
       search,
       status,
-      vendor_id,
+      priority,
       branch_id: branch_id || undefined,
       from_date,
       to_date,
-      sortBy: sort_by || 'po_date',
+      sortBy: sort_by || 'requisition_date',
       sortOrder: sort_order || 'desc',
     });
 
@@ -154,23 +103,23 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // GET /purchase-orders/:id — Get PO with full details
+  // GET /purchase-requisitions/:id — Get requisition with details
   // ──────────────────────────────────────────────────────────
-  server.get('/purchase-orders/:id', { preHandler: [authenticate] }, async (request, reply) => {
+  server.get('/purchase-requisitions/:id', { preHandler: [authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const purchaseOrder = await purchaseOrderService.getPurchaseOrderWithDetails(id, request.user!.companyId);
+    const requisition = await purchaseRequisitionService.getRequisitionWithDetails(id, request.user!.companyId);
 
-    if (!purchaseOrder) {
-      return reply.code(404).send({ success: false, error: 'Purchase order not found' });
+    if (!requisition) {
+      return reply.code(404).send({ success: false, error: 'Purchase requisition not found' });
     }
 
-    return { success: true, data: purchaseOrder };
+    return { success: true, data: requisition };
   });
 
   // ──────────────────────────────────────────────────────────
-  // PUT /purchase-orders/:id — Update PO (draft only)
+  // PUT /purchase-requisitions/:id — Update requisition (draft only)
   // ──────────────────────────────────────────────────────────
-  server.put('/purchase-orders/:id', { preHandler: [authenticate] }, async (request, reply) => {
+  server.put('/purchase-requisitions/:id', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
       const body = request.body as any;
@@ -191,33 +140,25 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
           if (!line.uom_id) {
             return reply.code(400).send({ success: false, error: `Line ${i + 1}: uom_id is required` });
           }
-          if (line.unit_price === undefined || line.unit_price === null || line.unit_price < 0) {
-            return reply.code(400).send({ success: false, error: `Line ${i + 1}: unit_price is required and must be >= 0` });
-          }
         }
       }
 
       const user = request.user!;
-      const updated = await purchaseOrderService.updatePurchaseOrder(id, user.companyId, {
-        expected_delivery_date: body.expected_delivery_date || undefined,
-        vendor_id: body.vendor_id || undefined,
-        vendor_quotation_ref: body.vendor_quotation_ref || undefined,
-        currency_code: body.currency_code || undefined,
-        exchange_rate: body.exchange_rate,
-        payment_terms_days: body.payment_terms_days,
-        terms_and_conditions: body.terms_and_conditions,
-        internal_notes: body.internal_notes,
-        delivery_warehouse_id: body.delivery_warehouse_id || body.warehouse_id || undefined,
+      const updated = await purchaseRequisitionService.updateRequisition(id, user.companyId, {
+        ...body,
+        purpose: body.purpose || body.justification,
+        metadata: body.source
+          ? { ...body.metadata, source: body.source }
+          : body.metadata,
         lines: body.lines?.map((l: any, idx: number) => ({
           line_number: l.line_number || idx + 1,
           item_id: l.item_id,
           description: l.description,
           quantity: parseFloat(l.quantity),
           uom_id: l.uom_id,
-          unit_price: parseFloat(l.unit_price),
-          discount_amount: l.discount_amount ? parseFloat(l.discount_amount) : undefined,
-          hsn_code: l.hsn_code || undefined,
-          warehouse_id: l.warehouse_id || undefined,
+          estimated_price: l.estimated_price ? parseFloat(l.estimated_price) : undefined,
+          preferred_vendor_id: l.preferred_vendor_id,
+          remarks: l.remarks,
         })),
         updated_by: user.userId,
       });
@@ -230,17 +171,17 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // DELETE /purchase-orders/:id — Soft delete (draft only)
+  // DELETE /purchase-requisitions/:id — Soft delete (draft only)
   // ──────────────────────────────────────────────────────────
-  server.delete('/purchase-orders/:id', { preHandler: [authenticate] }, async (request, reply) => {
+  server.delete('/purchase-requisitions/:id', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      const deleted = await purchaseOrderService.deletePurchaseOrder(
+      const deleted = await purchaseRequisitionService.deleteRequisition(
         id,
         request.user!.companyId,
         request.user!.userId
       );
-      return { success: true, message: 'Purchase order deleted', data: deleted };
+      return { success: true, message: 'Purchase requisition deleted', data: deleted };
     } catch (error: any) {
       const statusCode = error.message.includes('not found') ? 404 : 400;
       return reply.code(statusCode).send({ success: false, error: error.message });
@@ -248,19 +189,41 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders/:id/approve — Approve (draft → approved)
+  // POST /purchase-requisitions/:id/submit — Submit (draft → submitted)
   // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders/:id/approve', { preHandler: [authenticate] }, async (request, reply) => {
+  server.post('/purchase-requisitions/:id/submit', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      const approved = await purchaseOrderService.approvePurchaseOrder(
+      const submitted = await purchaseRequisitionService.submitRequisition(
         id,
         request.user!.companyId,
         request.user!.userId
       );
       return {
         success: true,
-        message: 'Purchase order approved',
+        message: 'Purchase requisition submitted',
+        data: submitted,
+      };
+    } catch (error: any) {
+      const statusCode = error.message.includes('not found') ? 404 : 400;
+      return reply.code(statusCode).send({ success: false, error: error.message });
+    }
+  });
+
+  // ──────────────────────────────────────────────────────────
+  // POST /purchase-requisitions/:id/approve — Approve (submitted → approved)
+  // ──────────────────────────────────────────────────────────
+  server.post('/purchase-requisitions/:id/approve', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const approved = await purchaseRequisitionService.approveRequisition(
+        id,
+        request.user!.companyId,
+        request.user!.userId
+      );
+      return {
+        success: true,
+        message: 'Purchase requisition approved',
         data: approved,
       };
     } catch (error: any) {
@@ -270,20 +233,27 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders/:id/send — Send to vendor (approved → sent)
+  // POST /purchase-requisitions/:id/reject — Reject (submitted → rejected)
   // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders/:id/send', { preHandler: [authenticate] }, async (request, reply) => {
+  server.post('/purchase-requisitions/:id/reject', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      const sent = await purchaseOrderService.sendPurchaseOrder(
+      const body = request.body as any;
+
+      if (!body.reason) {
+        return reply.code(400).send({ success: false, error: 'reason is required for rejection' });
+      }
+
+      const rejected = await purchaseRequisitionService.rejectRequisition(
         id,
         request.user!.companyId,
-        request.user!.userId
+        request.user!.userId,
+        body.reason
       );
       return {
         success: true,
-        message: 'Purchase order sent to vendor',
-        data: sent,
+        message: 'Purchase requisition rejected',
+        data: rejected,
       };
     } catch (error: any) {
       const statusCode = error.message.includes('not found') ? 404 : 400;
@@ -292,43 +262,23 @@ export async function purchaseOrderRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders/:id/cancel — Cancel PO
+  // POST /purchase-requisitions/:id/convert-to-po — Convert
+  // an approved requisition to a purchase order
   // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders/:id/cancel', { preHandler: [authenticate] }, async (request, reply) => {
+  server.post('/purchase-requisitions/:id/convert-to-po', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      const cancelled = await purchaseOrderService.cancelPurchaseOrder(
-        id,
-        request.user!.companyId,
-        request.user!.userId
-      );
-      return {
-        success: true,
-        message: 'Purchase order cancelled',
-        data: cancelled,
-      };
-    } catch (error: any) {
-      const statusCode = error.message.includes('not found') ? 404 : 400;
-      return reply.code(statusCode).send({ success: false, error: error.message });
-    }
-  });
+      const body = request.body as any;
+      const user = request.user!;
 
-  // ──────────────────────────────────────────────────────────
-  // POST /purchase-orders/:id/close — Close PO
-  // ──────────────────────────────────────────────────────────
-  server.post('/purchase-orders/:id/close', { preHandler: [authenticate] }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      const closed = await purchaseOrderService.closePurchaseOrder(
+      const po = await purchaseOrderService.createFromRequisition(
         id,
-        request.user!.companyId,
-        request.user!.userId
+        user.companyId,
+        user.userId,
+        body
       );
-      return {
-        success: true,
-        message: 'Purchase order closed',
-        data: closed,
-      };
+
+      return reply.code(201).send({ success: true, data: po });
     } catch (error: any) {
       const statusCode = error.message.includes('not found') ? 404 : 400;
       return reply.code(statusCode).send({ success: false, error: error.message });
