@@ -54,9 +54,20 @@ export function formatCurrencyCompact(value: number | string | null | undefined)
 }
 
 // ─── Date Formatting ─────────────────────────────────────────────
+
+/** Extract YYYY-MM-DD from any date representation without timezone shift */
+export function toDateString(value: string | Date | null | undefined): string {
+  if (!value) return '';
+  const s = typeof value === 'string' ? value : value.toISOString();
+  return s.substring(0, 10);
+}
+
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return '—';
-  return dayjs(value).format('DD MMM YYYY');
+  // Parse as local date to avoid timezone shift on date-only values
+  const dateStr = typeof value === 'string' ? value : value.toISOString();
+  const ymd = dateStr.substring(0, 10); // YYYY-MM-DD
+  return dayjs(ymd).format('DD MMM YYYY');
 }
 
 export function formatDateTime(value: string | Date | null | undefined): string {
@@ -83,9 +94,11 @@ export function formatRelativeDate(value: string | Date | null | undefined): str
 }
 
 // ─── Percentage Formatting ───────────────────────────────────────
-export function formatPercent(value: number | null | undefined, decimals = 1): string {
+export function formatPercent(value: any, decimals = 1): string {
   if (value === null || value === undefined) return '—';
-  return `${value.toFixed(decimals)}%`;
+  const num = typeof value === 'number' ? value : parseFloat(value);
+  if (isNaN(num)) return '—';
+  return `${num.toFixed(decimals)}%`;
 }
 
 // ─── Quantity Formatting ─────────────────────────────────────────

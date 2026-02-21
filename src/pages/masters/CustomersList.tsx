@@ -75,12 +75,11 @@ export function CustomersList() {
       render: (row) => row.gstin ? <span className="font-mono text-xs">{row.gstin}</span> : <span className="text-gray-300">—</span>,
     },
     {
-      key: 'credit_limit', header: 'Credit Limit', align: 'right', width: '140px',
-      render: (row) => row.credit_limit ? <AmountDisplay value={row.credit_limit} /> : <span className="text-gray-300">—</span>,
-    },
-    {
-      key: 'payment_terms_days', header: 'Terms', align: 'center', width: '80px',
-      render: (row) => row.payment_terms_days ? `${row.payment_terms_days}d` : '—',
+      key: 'outstanding_balance', header: 'Outstanding', align: 'right', width: '140px',
+      render: (row) => {
+        const balance = (row as any).opening_balance || 0;
+        return balance ? <AmountDisplay value={balance} /> : <span className="text-gray-300">₹0</span>;
+      },
     },
     {
       key: 'status', header: 'Status', width: '100px',

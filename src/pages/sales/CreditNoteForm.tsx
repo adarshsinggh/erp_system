@@ -96,7 +96,8 @@ export function CreditNoteForm() {
       const cn = res.data;
       setStatus(cn.status);
       setForm({
-        customer_id: cn.customer_id || '', credit_note_date: cn.credit_note_date || '',
+        customer_id: cn.customer_id || '',
+        credit_note_date: cn.credit_note_date ? String(cn.credit_note_date).substring(0, 10) : '',
         invoice_id: cn.invoice_id || '', reason: cn.reason || 'return',
         reason_detail: cn.reason_detail || '',
         subtotal: cn.subtotal ? String(cn.subtotal) : '0',

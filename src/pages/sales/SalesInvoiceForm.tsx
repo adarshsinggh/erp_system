@@ -22,7 +22,7 @@ interface FormLine {
   uom_id: string;
   uom_code: string;
   unit_price: number;
-  discount_type: 'percentage' | 'amount';
+  discount_type: 'percentage' | 'fixed';
   discount_value: number;
   hsn_code: string;
   cgst_rate: number;
@@ -41,12 +41,12 @@ function emptyLine(): FormLine {
 }
 
 function calcLine(line: FormLine) {
-  const subtotal = line.quantity * line.unit_price;
-  const discount = line.discount_type === 'percentage' ? subtotal * line.discount_value / 100 : line.discount_value;
+  const subtotal = Number(line.quantity) * Number(line.unit_price);
+  const discount = line.discount_type === 'percentage' ? subtotal * Number(line.discount_value) / 100 : Number(line.discount_value);
   const taxable = subtotal - discount;
-  const cgst = taxable * line.cgst_rate / 100;
-  const sgst = taxable * line.sgst_rate / 100;
-  const igst = taxable * line.igst_rate / 100;
+  const cgst = taxable * Number(line.cgst_rate) / 100;
+  const sgst = taxable * Number(line.sgst_rate) / 100;
+  const igst = taxable * Number(line.igst_rate) / 100;
   return { subtotal, discount, taxable, cgst, sgst, igst, total: taxable + cgst + sgst + igst };
 }
 
@@ -119,8 +119,10 @@ export function SalesInvoiceForm() {
       setIrn(inv.irn);
       setPayments(inv.payments || []);
       setForm({
-        customer_id: inv.customer_id || '', invoice_date: inv.invoice_date || '',
-        due_date: inv.due_date || '', sales_order_id: inv.sales_order_id || '',
+        customer_id: inv.customer_id || '',
+        invoice_date: inv.invoice_date ? String(inv.invoice_date).substring(0, 10) : '',
+        due_date: inv.due_date ? String(inv.due_date).substring(0, 10) : '',
+        sales_order_id: inv.sales_order_id || '',
         place_of_supply: inv.place_of_supply || '09',
         is_reverse_charge: !!inv.is_reverse_charge,
         tcs_rate: inv.tcs_rate ? String(inv.tcs_rate) : '0',
@@ -150,7 +152,7 @@ export function SalesInvoiceForm() {
   }, [debouncedCustSearch]);
 
   useEffect(() => {
-    if (debouncedProdSearch?.length >= 2)
+    if (debouncedProdSearch?.length >= 1)
       productsApi.list({ search: debouncedProdSearch, limit: 10, status: 'active' }).then((r) => setProductResults(r.data || [])).catch(() => {});
     else setProductResults([]);
   }, [debouncedProdSearch]);
@@ -174,6 +176,24 @@ export function SalesInvoiceForm() {
     setLines((prev) => prev.map((line, i) => i === idx ? { ...line, [field]: value } : line));
   }
 
+  // Recalculate tax type when Place of Supply changes
+  // Default branch state code is '09' (UP) — inter-state → IGST, intra-state → CGST+SGST
+  const BRANCH_STATE = '09';
+  function handlePlaceOfSupplyChange(newPos: string) {
+    setForm((f) => ({ ...f, place_of_supply: newPos }));
+    const isInterState = newPos !== BRANCH_STATE;
+    setLines((prev) => prev.map((line) => {
+      if (!line.product_id) return line;
+      const totalGst = Number(line.cgst_rate) + Number(line.sgst_rate) + Number(line.igst_rate);
+      const gstRate = totalGst || 18;
+      if (isInterState) {
+        return { ...line, cgst_rate: 0, sgst_rate: 0, igst_rate: gstRate };
+      } else {
+        return { ...line, cgst_rate: gstRate / 2, sgst_rate: gstRate / 2, igst_rate: 0 };
+      }
+    }));
+  }
+
   async function handleSave() {
     if (!form.customer_id) { toast.error('Please select a customer'); return; }
     if (!form.invoice_date) { toast.error('Please enter invoice date'); return; }
@@ -183,12 +203,18 @@ export function SalesInvoiceForm() {
     try {
       const payload = {
         ...form, tcs_rate: parseFloat(form.tcs_rate) || 0,
-        lines: validLines.map((l, i) => ({
-          id: l.id, line_number: i + 1, product_id: l.product_id, description: l.description,
-          quantity: l.quantity, uom_id: l.uom_id, unit_price: l.unit_price,
-          discount_type: l.discount_type, discount_value: l.discount_value, hsn_code: l.hsn_code,
-          cgst_rate: l.cgst_rate, sgst_rate: l.sgst_rate, igst_rate: l.igst_rate, warehouse_id: l.warehouse_id,
-        })),
+        lines: validLines.map((l, i) => {
+          const lineSubtotal = Number(l.quantity) * Number(l.unit_price);
+          const discountAmt = l.discount_type === 'percentage'
+            ? lineSubtotal * Number(l.discount_value) / 100
+            : Number(l.discount_value);
+          return {
+            id: l.id, line_number: i + 1, product_id: l.product_id, description: l.description,
+            quantity: l.quantity, uom_id: l.uom_id, unit_price: l.unit_price,
+            discount_amount: discountAmt, hsn_code: l.hsn_code,
+            warehouse_id: l.warehouse_id,
+          };
+        }),
       };
       if (isEdit) { await salesInvoicesApi.update(id!, payload); toast.success('Invoice updated'); loadInvoice(); }
       else { const res = await salesInvoicesApi.create(payload as any); toast.success('Invoice created'); navigate(`/sales/invoices/${res.data.id}`); }
@@ -276,7 +302,7 @@ export function SalesInvoiceForm() {
             <Input type="date" value={form.due_date} onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))} disabled={readonly} />
           </FormField>
           <FormField label="Place of Supply">
-            <Select value={form.place_of_supply} onChange={(e) => setForm((f) => ({ ...f, place_of_supply: e.target.value }))}
+            <Select value={form.place_of_supply} onChange={(e) => handlePlaceOfSupplyChange(e.target.value)}
               options={Object.entries(INDIAN_STATES).map(([code, name]) => ({ value: code, label: `${code} - ${name}` }))}
               disabled={readonly} />
           </FormField>
@@ -298,7 +324,7 @@ export function SalesInvoiceForm() {
       {/* Lines */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Line Items</h3>
-        <div className="overflow-x-auto">
+        <div className="overflow-visible">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
@@ -329,7 +355,7 @@ export function SalesInvoiceForm() {
                             onChange={(e) => { setProductSearchIdx(idx); setProductSearch(e.target.value); }}
                             onFocus={() => setProductSearchIdx(idx)} placeholder="Search product..." className="!py-1 !text-xs h-8" />
                           {productSearchIdx === idx && productResults.length > 0 && (
-                            <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
+                            <div className="absolute z-50 top-full left-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto min-w-[320px]">
                               {productResults.map((p) => (
                                 <button key={p.id} type="button" onClick={() => selectProduct(idx, p)}
                                   className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-xs">
@@ -356,7 +382,7 @@ export function SalesInvoiceForm() {
                         <select value={line.discount_type} onChange={(e) => updateLine(idx, 'discount_type', e.target.value)}
                           disabled={readonly} className="text-xs border border-gray-300 rounded px-1 py-1 h-8 bg-white">
                           <option value="percentage">%</option>
-                          <option value="amount">₹</option>
+                          <option value="fixed">₹</option>
                         </select>
                         <Input type="number" value={line.discount_value} onChange={(e) => updateLine(idx, 'discount_value', parseFloat(e.target.value) || 0)}
                           disabled={readonly} className="!py-1 !text-xs h-8 text-right w-16" min={0} />
@@ -364,7 +390,7 @@ export function SalesInvoiceForm() {
                     </td>
                     <td className="py-2 px-2 text-xs text-gray-500 font-mono">{line.hsn_code || '—'}</td>
                     <td className="py-2 px-2 text-xs text-gray-500 text-right">
-                      {line.igst_rate > 0 ? `${line.igst_rate}%` : `${line.cgst_rate + line.sgst_rate}%`}
+                      {Number(line.igst_rate) > 0 ? `${Number(line.igst_rate)}%` : `${Number(line.cgst_rate) + Number(line.sgst_rate)}%`}
                     </td>
                     <td className="py-2 px-2 text-right"><AmountDisplay value={lc.total} compact /></td>
                     {!readonly && (

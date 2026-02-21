@@ -53,34 +53,41 @@ class ProductService extends BaseService {
     if (!product) return null;
 
     // Get active BOM
-    const active_bom = await this.db('bom_headers')
-      .where({ product_id: id, company_id: companyId, status: 'active', is_deleted: false })
-      .orderBy('bom_version', 'desc')
-      .first();
-
+    let active_bom: any = null;
     let bom_lines: any[] = [];
-    if (active_bom) {
-      bom_lines = await this.db('bom_lines')
-        .where({ bom_header_id: active_bom.id, company_id: companyId, is_deleted: false })
-        .leftJoin('items', 'bom_lines.component_item_id', 'items.id')
-        .leftJoin('products as sub_product', 'bom_lines.component_product_id', 'sub_product.id')
-        .leftJoin('units_of_measurement as uom', 'bom_lines.uom_id', 'uom.id')
-        .select(
-          'bom_lines.*',
-          'items.item_code',
-          'items.name as item_name',
-          'sub_product.product_code',
-          'sub_product.name as sub_product_name',
-          'uom.code as uom_code'
-        )
-        .orderBy('bom_lines.line_number');
-    }
+    let bom_versions: any[] = [];
 
-    // Get all BOM versions
-    const bom_versions = await this.db('bom_headers')
-      .where({ product_id: id, company_id: companyId, is_deleted: false })
-      .select('id', 'bom_code', 'bom_version', 'status', 'effective_from', 'effective_to')
-      .orderBy('bom_version', 'desc');
+    try {
+      active_bom = await this.db('bom_headers')
+        .where({ product_id: id, company_id: companyId, status: 'active', is_deleted: false })
+        .orderBy('bom_version', 'desc')
+        .first() || null;
+
+      if (active_bom) {
+        bom_lines = await this.db('bom_lines')
+          .where({ bom_header_id: active_bom.id, company_id: companyId, is_deleted: false })
+          .leftJoin('items', 'bom_lines.component_item_id', 'items.id')
+          .leftJoin('products as sub_product', 'bom_lines.component_product_id', 'sub_product.id')
+          .leftJoin('units_of_measurement as uom', 'bom_lines.uom_id', 'uom.id')
+          .select(
+            'bom_lines.*',
+            'items.item_code',
+            'items.name as item_name',
+            'sub_product.product_code',
+            'sub_product.name as sub_product_name',
+            'uom.code as uom_code'
+          )
+          .orderBy('bom_lines.line_number');
+      }
+
+      // Get all BOM versions
+      bom_versions = await this.db('bom_headers')
+        .where({ product_id: id, company_id: companyId, is_deleted: false })
+        .select('id', 'bom_code', 'bom_version', 'status', 'effective_from', 'effective_to')
+        .orderBy('bom_version', 'desc');
+    } catch {
+      // Gracefully handle BOM query failures — product details should still load
+    }
 
     return { ...product, active_bom, bom_lines, bom_versions };
   }

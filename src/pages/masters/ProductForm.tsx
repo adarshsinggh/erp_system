@@ -60,14 +60,12 @@ export function ProductForm() {
   useEffect(() => { loadDropdowns(); if (isEdit) loadProduct(); }, [id]);
 
   async function loadDropdowns() {
-    try {
-      const [catRes, brandRes, uomRes] = await Promise.all([
-        mastersApi.listCategories(), mastersApi.listBrands(), mastersApi.listUoms(),
-      ]);
-      setCategories((catRes.data || []).map((c: any) => ({ value: c.id, label: c.name })));
-      setBrands((brandRes.data || []).map((b: any) => ({ value: b.id, label: b.name })));
-      setUoms((uomRes.data || []).map((u: any) => ({ value: u.id, label: `${u.name} (${u.symbol || u.code})` })));
-    } catch {} // silent
+    const [catRes, brandRes, uomRes] = await Promise.allSettled([
+      mastersApi.listCategories(), mastersApi.listBrands(), mastersApi.listUoms(),
+    ]);
+    if (catRes.status === 'fulfilled') setCategories((catRes.value.data || []).map((c: any) => ({ value: c.id, label: c.name })));
+    if (brandRes.status === 'fulfilled') setBrands((brandRes.value.data || []).map((b: any) => ({ value: b.id, label: b.name })));
+    if (uomRes.status === 'fulfilled') setUoms((uomRes.value.data || []).map((u: any) => ({ value: u.id, label: `${u.name} (${u.symbol || u.code || ''})` })));
   }
 
   async function loadProduct() {

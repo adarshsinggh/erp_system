@@ -277,7 +277,7 @@ export function PurchaseOrderForm() {
           </FormField>
           <FormField label="Warehouse">
             <Input value={form.warehouse_id} onChange={(e) => setForm((f) => ({ ...f, warehouse_id: e.target.value }))}
-              placeholder="Warehouse UUID" disabled={readonly} />
+              placeholder="Select warehouse" disabled={readonly} />
           </FormField>
         </div>
       </div>
@@ -285,7 +285,7 @@ export function PurchaseOrderForm() {
       {/* Lines */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Line Items</h3>
-        <div className="overflow-x-auto">
+        <div className="overflow-visible">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">

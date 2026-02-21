@@ -73,8 +73,11 @@ export function UserForm() {
     if (!form.username.trim()) errs.username = 'Username is required';
     if (form.username.includes(' ')) errs.username = 'Username cannot have spaces';
     if (!form.full_name.trim()) errs.full_name = 'Full name is required';
-    if (!form.email.trim()) errs.email = 'Email is required';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Invalid email';
+    if (!form.email.trim()) {
+      errs.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      errs.email = 'Invalid email';
+    }
     if (!form.role_id) errs.role_id = 'Role is required';
     if (!form.branch_id) errs.branch_id = 'Branch is required';
     if (!isEdit && !form.password) errs.password = 'Password is required for new users';

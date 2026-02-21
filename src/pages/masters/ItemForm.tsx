@@ -72,16 +72,14 @@ export function ItemForm() {
   }, [id]);
 
   async function loadDropdowns() {
-    try {
-      const [catRes, brandRes, mfgRes, uomRes] = await Promise.all([
-        mastersApi.listCategories(), mastersApi.listBrands(),
-        mastersApi.listManufacturers(), mastersApi.listUoms(),
-      ]);
-      setCategories((catRes.data || []).map((c: any) => ({ value: c.id, label: c.name })));
-      setBrands((brandRes.data || []).map((b: any) => ({ value: b.id, label: b.name })));
-      setManufacturers((mfgRes.data || []).map((m: any) => ({ value: m.id, label: m.name })));
-      setUoms((uomRes.data || []).map((u: any) => ({ value: u.id, label: `${u.name} (${u.symbol || u.code})` })));
-    } catch (err: any) { toast.error('Failed to load master data'); }
+    const [catRes, brandRes, mfgRes, uomRes] = await Promise.allSettled([
+      mastersApi.listCategories(), mastersApi.listBrands(),
+      mastersApi.listManufacturers(), mastersApi.listUoms(),
+    ]);
+    if (catRes.status === 'fulfilled') setCategories((catRes.value.data || []).map((c: any) => ({ value: c.id, label: c.name })));
+    if (brandRes.status === 'fulfilled') setBrands((brandRes.value.data || []).map((b: any) => ({ value: b.id, label: b.name })));
+    if (mfgRes.status === 'fulfilled') setManufacturers((mfgRes.value.data || []).map((m: any) => ({ value: m.id, label: m.name })));
+    if (uomRes.status === 'fulfilled') setUoms((uomRes.value.data || []).map((u: any) => ({ value: u.id, label: `${u.code || u.symbol || ''} - ${u.name}` })));
   }
 
   async function loadItem() {

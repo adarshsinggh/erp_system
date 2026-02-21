@@ -52,8 +52,31 @@ class CustomerService extends BaseService {
     super('customers');
   }
 
+  async generateCustomerCode(companyId: string): Promise<string> {
+    const result = await this.db('customers')
+      .where({ company_id: companyId })
+      .whereRaw("customer_code LIKE 'CUST-%'")
+      .max('customer_code as max_code')
+      .first();
+
+    let nextNumber = 1;
+    if (result?.max_code) {
+      const match = result.max_code.match(/CUST-(\d+)/);
+      if (match) {
+        nextNumber = parseInt(match[1], 10) + 1;
+      }
+    }
+
+    return `CUST-${String(nextNumber).padStart(4, '0')}`;
+  }
+
   async createCustomer(input: CreateCustomerInput) {
     const { contact_persons, addresses, ...customerData } = input;
+
+    // Auto-generate customer_code if not provided
+    if (!customerData.customer_code) {
+      customerData.customer_code = await this.generateCustomerCode(customerData.company_id);
+    }
 
     return await this.db.transaction(async (trx) => {
       // Create customer

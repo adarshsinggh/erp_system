@@ -14,7 +14,7 @@ export interface QuotationLine {
   uom_id: string;
   uom_code?: string;
   unit_price: number;
-  discount_type: 'percentage' | 'amount';
+  discount_type: 'percentage' | 'fixed';
   discount_value: number;
   discount_amount?: number;
   line_subtotal?: number;

@@ -61,6 +61,9 @@ export const customersApi = {
   list: (params?: ListParams) =>
     apiClient.get<PaginatedResponse<Customer>>('/customers', params),
 
+  nextCode: () =>
+    apiClient.get<ApiResponse<{ code: string }>>('/customers/next-code'),
+
   getById: (id: string) =>
     apiClient.get<ApiResponse<CustomerDetail>>(`/customers/${id}`),
 

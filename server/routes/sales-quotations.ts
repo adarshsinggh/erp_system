@@ -10,6 +10,7 @@
 import { FastifyInstance } from 'fastify';
 import { authenticate } from '../plugins/auth.plugin';
 import { salesQuotationService } from '../services/sales-quotation.service';
+import { salesOrderService } from '../services/sales-order.service';
 
 export async function salesQuotationRoutes(server: FastifyInstance) {
   // ──────────────────────────────────────────────────────────
@@ -240,6 +241,48 @@ export async function salesQuotationRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
+  // POST /sales-quotations/:id/send — Mark as sent
+  // ──────────────────────────────────────────────────────────
+  server.post('/sales-quotations/:id/send', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const updated = await salesQuotationService.updateStatus(id, request.user!.companyId, 'sent', request.user!.userId);
+      return { success: true, data: updated };
+    } catch (error: any) {
+      const statusCode = error.message.includes('not found') ? 404 : 400;
+      return reply.code(statusCode).send({ success: false, error: error.message });
+    }
+  });
+
+  // ──────────────────────────────────────────────────────────
+  // POST /sales-quotations/:id/accept — Mark as accepted
+  // ──────────────────────────────────────────────────────────
+  server.post('/sales-quotations/:id/accept', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const updated = await salesQuotationService.updateStatus(id, request.user!.companyId, 'accepted', request.user!.userId);
+      return { success: true, data: updated };
+    } catch (error: any) {
+      const statusCode = error.message.includes('not found') ? 404 : 400;
+      return reply.code(statusCode).send({ success: false, error: error.message });
+    }
+  });
+
+  // ──────────────────────────────────────────────────────────
+  // POST /sales-quotations/:id/reject — Mark as rejected
+  // ──────────────────────────────────────────────────────────
+  server.post('/sales-quotations/:id/reject', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const updated = await salesQuotationService.updateStatus(id, request.user!.companyId, 'rejected', request.user!.userId);
+      return { success: true, data: updated };
+    } catch (error: any) {
+      const statusCode = error.message.includes('not found') ? 404 : 400;
+      return reply.code(statusCode).send({ success: false, error: error.message });
+    }
+  });
+
+  // ──────────────────────────────────────────────────────────
   // POST /sales-quotations/:id/revert — Revert to draft
   // (from sent / rejected / expired)
   // ──────────────────────────────────────────────────────────
@@ -283,71 +326,42 @@ export async function salesQuotationRoutes(server: FastifyInstance) {
 
   // ──────────────────────────────────────────────────────────
   // POST /sales-quotations/:id/convert — Convert to Sales Order
-  // (Placeholder — actual SO creation is in Step 16.
-  //  For now, validates readiness and returns quotation data
-  //  formatted for SO creation.)
+  // Also aliased as /sales-quotations/:id/convert-to-so
   // ──────────────────────────────────────────────────────────
-  server.post('/sales-quotations/:id/convert', { preHandler: [authenticate] }, async (request, reply) => {
+  async function handleConvertToSO(request: any, reply: any) {
     try {
       const { id } = request.params as { id: string };
       const user = request.user!;
+      const body = (request.body as any) || {};
 
-      // Fetch full quotation
-      const quotation = await salesQuotationService.getQuotationWithDetails(id, user.companyId);
-      if (!quotation) {
-        return reply.code(404).send({ success: false, error: 'Quotation not found' });
-      }
-
-      if (quotation.status !== 'accepted') {
-        return reply.code(400).send({
-          success: false,
-          error: `Only accepted quotations can be converted. Current status: "${quotation.status}"`,
-        });
-      }
-
-      // Check validity
-      if (quotation.valid_until) {
-        const today = new Date().toISOString().split('T')[0];
-        if (quotation.valid_until < today) {
-          return reply.code(400).send({
-            success: false,
-            error: `Quotation expired on ${quotation.valid_until}. Revert to draft and re-send, or create a new quotation.`,
-          });
+      const salesOrder = await salesOrderService.createFromQuotation(
+        id,
+        user.companyId,
+        user.userId,
+        {
+          branch_id: body.branch_id,
+          order_date: body.order_date,
+          expected_delivery_date: body.expected_delivery_date,
+          customer_po_number: body.customer_po_number,
+          payment_terms_days: body.payment_terms_days,
+          internal_notes: body.internal_notes,
+          line_warehouse_ids: body.line_warehouse_ids,
         }
-      }
+      );
 
-      // Return conversion-ready payload
-      // (SalesOrderService in Step 16 will consume this)
-      return {
+      return reply.code(201).send({
         success: true,
-        message: 'Quotation is ready for conversion. Sales Order creation will be available in the next phase.',
-        data: {
-          source_quotation_id: quotation.id,
-          quotation_number: quotation.quotation_number,
-          customer_id: quotation.customer_id,
-          branch_id: quotation.branch_id,
-          billing_address_id: quotation.billing_address_id,
-          shipping_address_id: quotation.shipping_address_id,
-          contact_person_id: quotation.contact_person_id,
-          currency_code: quotation.currency_code,
-          exchange_rate: quotation.exchange_rate,
-          terms_and_conditions: quotation.terms_and_conditions,
-          lines: quotation.lines.map((l: any) => ({
-            product_id: l.product_id,
-            description: l.description,
-            quantity: l.quantity,
-            uom_id: l.uom_id,
-            unit_price: l.unit_price,
-            discount_type: l.discount_type,
-            discount_value: l.discount_value,
-            hsn_code: l.hsn_code,
-          })),
-        },
-      };
+        message: 'Quotation converted to Sales Order',
+        data: { sales_order_id: salesOrder.id, ...salesOrder },
+      });
     } catch (error: any) {
-      return reply.code(400).send({ success: false, error: error.message });
+      const statusCode = error.message.includes('not found') ? 404 : 400;
+      return reply.code(statusCode).send({ success: false, error: error.message });
     }
-  });
+  }
+
+  server.post('/sales-quotations/:id/convert', { preHandler: [authenticate] }, handleConvertToSO);
+  server.post('/sales-quotations/:id/convert-to-so', { preHandler: [authenticate] }, handleConvertToSO);
 
   // ──────────────────────────────────────────────────────────
   // POST /sales-quotations/expire-overdue — Batch expire

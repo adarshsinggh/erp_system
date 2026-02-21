@@ -60,10 +60,19 @@ export function CustomerForm() {
 
   useEffect(() => {
     if (isEdit) loadCustomer();
+    else loadNextCode();
   }, [id]);
+
+  async function loadNextCode() {
+    try {
+      const res = await customersApi.nextCode();
+      setForm((p) => ({ ...p, customer_code: res.data.code }));
+    } catch {}
+  }
 
   async function loadCustomer() {
     setLoading(true);
+    
     try {
       const res = await customersApi.getById(id!);
       const c = res.data;
@@ -121,11 +130,12 @@ export function CustomerForm() {
       if (isEdit) {
         await customersApi.update(id!, payload);
         toast.success('Customer updated');
+        navigate('/masters/customers');
       } else {
-        await customersApi.create(payload);
+        const res = await customersApi.create(payload);
         toast.success('Customer created');
+        navigate(`/masters/customers/${res.data.id}`);
       }
-      navigate('/masters/customers');
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -244,7 +254,7 @@ export function CustomerForm() {
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField label="Customer Code" required error={errors.customer_code}>
-              <Input value={form.customer_code} onChange={(e) => set('customer_code', e.target.value.toUpperCase())} error={!!errors.customer_code} placeholder="e.g. CUST-001" />
+              <Input value={form.customer_code} onChange={(e) => set('customer_code', e.target.value.toUpperCase())} error={!!errors.customer_code} placeholder="Auto-generated" readOnly={!isEdit && !!form.customer_code} className={!isEdit && form.customer_code ? 'bg-gray-50' : ''} />
             </FormField>
             <FormField label="Type">
               <Select value={form.customer_type} onChange={(e) => set('customer_type', e.target.value)} options={CUSTOMER_TYPES} />

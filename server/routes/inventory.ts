@@ -66,30 +66,35 @@ export async function inventoryRoutes(server: FastifyInstance) {
   //   page, limit, branch_id, warehouse_id, item_id, product_id,
   //   below_minimum (boolean), search, sort_by, sort_order
   // ──────────────────────────────────────────────────────────
-  server.get('/inventory/stock-summary', { preHandler: [authenticate] }, async (request) => {
-    const {
-      page, limit,
-      branch_id, warehouse_id,
-      item_id, product_id,
-      below_minimum, search,
-      sort_by, sort_order,
-    } = request.query as any;
+  server.get('/inventory/stock-summary', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const {
+        page, limit,
+        branch_id, warehouse_id,
+        item_id, product_id,
+        below_minimum, search,
+        sort_by, sort_order,
+      } = request.query as any;
 
-    const result = await inventoryService.getStockSummaryList({
-      companyId: request.user!.companyId,
-      branch_id,
-      warehouse_id,
-      item_id,
-      product_id,
-      below_minimum: below_minimum === 'true' || below_minimum === '1',
-      search,
-      page: parseInt(page) || 1,
-      limit: parseInt(limit) || 50,
-      sortBy: sort_by || 'ss.updated_at',
-      sortOrder: sort_order || 'desc',
-    });
+      const result = await inventoryService.getStockSummaryList({
+        companyId: request.user!.companyId,
+        branch_id,
+        warehouse_id,
+        item_id,
+        product_id,
+        below_minimum: below_minimum === 'true' || below_minimum === '1',
+        search,
+        page: parseInt(page) || 1,
+        limit: parseInt(limit) || 50,
+        sortBy: sort_by || 'ss.updated_at',
+        sortOrder: sort_order || 'desc',
+      });
 
-    return { success: true, ...result };
+      return { success: true, ...result };
+    } catch (error: any) {
+      server.log.error(error);
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to fetch stock summary', data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
+    }
   });
 
   // ──────────────────────────────────────────────────────────

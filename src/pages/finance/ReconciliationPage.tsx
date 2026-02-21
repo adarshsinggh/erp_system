@@ -208,8 +208,8 @@ export function ReconciliationPage() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
               <SummaryCard label="Book Balance" value={summary.book_balance} color="bg-blue-50 border-blue-200 text-blue-700" />
               <SummaryCard label="Statement Balance" value={summary.statement_balance} color="bg-purple-50 border-purple-200 text-purple-700" />
-              <SummaryCard label="Matched" value={String(summary.matched_count)} isCount color="bg-emerald-50 border-emerald-200 text-emerald-700" />
-              <SummaryCard label="Unmatched" value={String(summary.unmatched_count)} isCount color="bg-orange-50 border-orange-200 text-orange-700" />
+              <SummaryCard label="Matched" value={String(summary.matched_count ?? 0)} isCount color="bg-emerald-50 border-emerald-200 text-emerald-700" />
+              <SummaryCard label="Unmatched" value={String(summary.unmatched_count ?? 0)} isCount color="bg-orange-50 border-orange-200 text-orange-700" />
               <SummaryCard label="Difference" value={summary.difference}
                 color={Math.abs(summary.difference) < 0.01 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'} />
             </div>

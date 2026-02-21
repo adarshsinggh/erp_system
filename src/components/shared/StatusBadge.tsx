@@ -31,7 +31,7 @@ const dotClasses: Record<StatusColor, string> = {
 
 export function StatusBadge({ status, statusMap, size = 'sm' }: StatusBadgeProps) {
   const config = statusMap?.[status];
-  const label = config?.label || status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const label = config?.label || (status ? status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Unknown');
   const color: StatusColor = config?.color || 'gray';
 
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm';

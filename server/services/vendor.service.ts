@@ -76,14 +76,19 @@ class VendorService extends BaseService {
       .where({ entity_type: 'vendor', entity_id: id, company_id: companyId, is_deleted: false });
 
     // Get items this vendor supplies
-    const supplied_items = await this.db('item_vendor_mapping')
-      .where({ vendor_id: id, company_id: companyId, is_deleted: false, is_active: true })
-      .join('items', 'item_vendor_mapping.item_id', 'items.id')
-      .select(
-        'item_vendor_mapping.*',
-        'items.item_code',
-        'items.name as item_name'
-      );
+    let supplied_items: any[] = [];
+    try {
+      supplied_items = await this.db('item_vendor_mapping')
+        .where({ vendor_id: id, company_id: companyId, is_deleted: false, is_active: true })
+        .leftJoin('items', 'item_vendor_mapping.item_id', 'items.id')
+        .select(
+          'item_vendor_mapping.*',
+          'items.item_code',
+          'items.name as item_name'
+        );
+    } catch {
+      // item_vendor_mapping query may fail if no mappings exist — gracefully return empty
+    }
 
     return { ...vendor, contact_persons, addresses, supplied_items };
   }

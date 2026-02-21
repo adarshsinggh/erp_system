@@ -23,7 +23,7 @@ interface FormLine {
   uom_id: string;
   uom_code: string;
   unit_price: number;
-  discount_type: 'percentage' | 'amount';
+  discount_type: 'percentage' | 'fixed';
   discount_value: number;
   hsn_code: string;
   cgst_rate: number;
@@ -42,14 +42,14 @@ function emptyLine(): FormLine {
 
 // ─── Calculation Helpers ────────────────────────────────────────
 function calcLine(line: FormLine) {
-  const subtotal = line.quantity * line.unit_price;
+  const subtotal = Number(line.quantity) * Number(line.unit_price);
   const discount = line.discount_type === 'percentage'
-    ? subtotal * line.discount_value / 100
-    : line.discount_value;
+    ? subtotal * Number(line.discount_value) / 100
+    : Number(line.discount_value);
   const taxable = subtotal - discount;
-  const cgst = taxable * line.cgst_rate / 100;
-  const sgst = taxable * line.sgst_rate / 100;
-  const igst = taxable * line.igst_rate / 100;
+  const cgst = taxable * Number(line.cgst_rate) / 100;
+  const sgst = taxable * Number(line.sgst_rate) / 100;
+  const igst = taxable * Number(line.igst_rate) / 100;
   const total = taxable + cgst + sgst + igst;
   return { subtotal, discount, taxable, cgst, sgst, igst, total };
 }
@@ -80,6 +80,7 @@ export function QuotationForm() {
   const [status, setStatus] = useState('draft');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [convertConfirm, setConvertConfirm] = useState(false);
+  const [quotationNumber, setQuotationNumber] = useState('');
 
   // ─── Header State ─────────────────────────────────────
   const [form, setForm] = useState({
@@ -108,9 +109,14 @@ export function QuotationForm() {
   const isDraft = status === 'draft';
   const readonly = !isDraft && isEdit;
 
+  const [isDirty, setIsDirty] = useState(false);
+  const [exitConfirm, setExitConfirm] = useState(false);
+
   useKeyboardShortcuts({
     'ctrl+enter': () => { if (!readonly) handleSave(); },
-    'escape': () => navigate('/sales/quotations'),
+    'escape': () => {
+      if (isDirty) { setExitConfirm(true); } else { navigate('/sales/quotations'); }
+    },
   });
 
   // ─── Load Existing ────────────────────────────────────
@@ -124,10 +130,11 @@ export function QuotationForm() {
       const res = await salesQuotationsApi.getById(id!);
       const q = res.data;
       setStatus(q.status);
+      setQuotationNumber(q.quotation_number || '');
       setForm({
         customer_id: q.customer_id || '',
-        quotation_date: q.quotation_date || '',
-        valid_until: q.valid_until || '',
+        quotation_date: q.quotation_date ? String(q.quotation_date).substring(0, 10) : '',
+        valid_until: q.valid_until ? String(q.valid_until).substring(0, 10) : '',
         reference_number: q.reference_number || '',
         contact_person_id: q.contact_person_id || '',
         billing_address_id: q.billing_address_id || '',
@@ -171,7 +178,7 @@ export function QuotationForm() {
 
   // ─── Product Search Effect ────────────────────────────
   useEffect(() => {
-    if (debouncedProductSearch && debouncedProductSearch.length >= 2) {
+    if (debouncedProductSearch && debouncedProductSearch.length >= 1) {
       productsApi.list({ search: debouncedProductSearch, limit: 10, status: 'active' })
         .then((res) => setProductResults(res.data || []))
         .catch(() => {});
@@ -186,6 +193,7 @@ export function QuotationForm() {
     setCustomerSearch(c.name);
     setForm((f) => ({ ...f, customer_id: c.id }));
     setShowCustomerDropdown(false);
+    setIsDirty(true);
   }
 
   // ─── Product Select for Line ──────────────────────────
@@ -215,6 +223,7 @@ export function QuotationForm() {
 
   function updateLine(idx: number, field: keyof FormLine, value: any) {
     setLines((prev) => prev.map((line, i) => i === idx ? { ...line, [field]: value } : line));
+    setIsDirty(true);
   }
 
   // ─── Save ─────────────────────────────────────────────
@@ -332,7 +341,7 @@ export function QuotationForm() {
   return (
     <div>
       <PageHeader
-        title={isEdit ? `Quotation ${form.reference_number || ''}` : 'New Quotation'}
+        title={isEdit ? `Quotation ${quotationNumber || ''}` : 'New Quotation'}
         subtitle={isEdit && selectedCustomer ? selectedCustomer.name : undefined}
         actions={getActions() as any}
       />
@@ -354,7 +363,7 @@ export function QuotationForm() {
           <FormField label="Customer" required className="relative">
             <Input
               value={customerSearch}
-              onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerDropdown(true); }}
+              onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerDropdown(true); setIsDirty(true); }}
               onFocus={() => setShowCustomerDropdown(true)}
               placeholder="Search customer..."
               disabled={readonly}
@@ -404,7 +413,7 @@ export function QuotationForm() {
       {/* ─── Line Items ──────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Line Items</h3>
-        <div className="overflow-x-auto">
+        <div className="overflow-visible">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
@@ -440,7 +449,7 @@ export function QuotationForm() {
                             className="!py-1 !text-xs h-8"
                           />
                           {productSearchIdx === idx && productResults.length > 0 && (
-                            <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
+                            <div className="absolute z-50 top-full left-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto min-w-[320px]">
                               {productResults.map((p) => (
                                 <button key={p.id} type="button"
                                   onClick={() => selectProduct(idx, p)}
@@ -478,7 +487,7 @@ export function QuotationForm() {
                           disabled={readonly}
                           className="text-xs border border-gray-300 rounded px-1 py-1 h-8 bg-white">
                           <option value="percentage">%</option>
-                          <option value="amount">₹</option>
+                          <option value="fixed">₹</option>
                         </select>
                         <Input type="number" value={line.discount_value}
                           onChange={(e) => updateLine(idx, 'discount_value', parseFloat(e.target.value) || 0)}
@@ -487,10 +496,10 @@ export function QuotationForm() {
                     </td>
                     <td className="py-2 px-2 text-xs text-gray-500 font-mono">{line.hsn_code || '—'}</td>
                     <td className="py-2 px-2 text-xs text-gray-500 text-right">
-                      {line.igst_rate > 0 ? `${line.igst_rate}%` : `${line.cgst_rate + line.sgst_rate}%`}
+                      {Number(line.igst_rate) > 0 ? `${Number(line.igst_rate)}%` : `${Number(line.cgst_rate) + Number(line.sgst_rate)}%`}
                     </td>
                     <td className="py-2 px-2 text-right">
-                      <AmountDisplay value={lc.total} compact />
+                      <AmountDisplay value={lc.total} />
                     </td>
                     {!readonly && (
                       <td className="py-2 px-2">
@@ -565,6 +574,12 @@ export function QuotationForm() {
         confirmLabel="Convert"
         onConfirm={() => { setConvertConfirm(false); handleAction('convert'); }}
         onCancel={() => setConvertConfirm(false)} />
+
+      <ConfirmDialog open={exitConfirm} title="Unsaved Changes"
+        message="You have unsaved changes. Are you sure you want to leave?"
+        variant="danger" confirmLabel="Leave"
+        onConfirm={() => { setExitConfirm(false); navigate('/sales/quotations'); }}
+        onCancel={() => setExitConfirm(false)} />
     </div>
   );
 }

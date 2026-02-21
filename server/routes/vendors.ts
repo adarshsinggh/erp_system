@@ -15,10 +15,14 @@ export async function vendorRoutes(server: FastifyInstance) {
   });
 
   server.get('/vendors/:id', { preHandler: [authenticate] }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const vendor = await vendorService.getVendorWithDetails(id, request.user!.companyId);
-    if (!vendor) return reply.code(404).send({ success: false, error: 'Vendor not found' });
-    return { success: true, data: vendor };
+    try {
+      const { id } = request.params as { id: string };
+      const vendor = await vendorService.getVendorWithDetails(id, request.user!.companyId);
+      if (!vendor) return reply.code(404).send({ success: false, error: 'Vendor not found' });
+      return { success: true, data: vendor };
+    } catch (error: any) {
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to load vendor details' });
+    }
   });
 
   server.post('/vendors', { preHandler: [authenticate] }, async (request, reply) => {

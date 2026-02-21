@@ -83,11 +83,13 @@ export function PaymentReceiptForm() {
       const p = res.data;
       setStatus(p.status);
       setForm({
-        customer_id: p.customer_id || '', receipt_date: p.receipt_date || '',
+        customer_id: p.customer_id || '',
+        receipt_date: p.receipt_date ? String(p.receipt_date).substring(0, 10) : '',
         invoice_id: p.invoice_id || '', amount: p.amount ? String(p.amount) : '',
         payment_mode: p.payment_mode || 'bank_transfer',
         bank_account_id: p.bank_account_id || '',
-        cheque_number: p.cheque_number || '', cheque_date: p.cheque_date || '',
+        cheque_number: p.cheque_number || '',
+        cheque_date: p.cheque_date ? String(p.cheque_date).substring(0, 10) : '',
         transaction_reference: p.transaction_reference || '',
         tds_deducted: p.tds_deducted ? String(p.tds_deducted) : '0',
         narration: p.narration || '', is_advance: !!p.is_advance,
@@ -115,10 +117,13 @@ export function PaymentReceiptForm() {
     if (!form.amount || parseFloat(form.amount) <= 0) { toast.error('Please enter a valid amount'); return; }
     setSaving(true);
     try {
-      const payload = {
-        ...form,
+      const payload: Record<string, unknown> = {
+        customer_id: form.customer_id,
+        receipt_date: form.receipt_date,
         amount: parseFloat(form.amount),
+        payment_mode: form.payment_mode,
         tds_deducted: parseFloat(form.tds_deducted) || 0,
+        narration: form.narration || null,
         invoice_id: form.invoice_id || null,
         bank_account_id: form.bank_account_id || null,
         cheque_number: form.cheque_number || null,

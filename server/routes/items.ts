@@ -15,10 +15,14 @@ export async function itemRoutes(server: FastifyInstance) {
   });
 
   server.get('/items/:id', { preHandler: [authenticate] }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const item = await itemService.getItemWithDetails(id, request.user!.companyId);
-    if (!item) return reply.code(404).send({ success: false, error: 'Item not found' });
-    return { success: true, data: item };
+    try {
+      const { id } = request.params as { id: string };
+      const item = await itemService.getItemWithDetails(id, request.user!.companyId);
+      if (!item) return reply.code(404).send({ success: false, error: 'Item not found' });
+      return { success: true, data: item };
+    } catch (error: any) {
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to load item details' });
+    }
   });
 
   server.post('/items', { preHandler: [authenticate] }, async (request, reply) => {

@@ -306,7 +306,8 @@ const REPORT_CATEGORIES: ReportCategory[] = [
           }},
           { key: 'variance_pct', header: 'Var %', align: 'right', render: (r) => {
             const v = parseFloat(r.variance_pct as string || '0');
-            return <span className={v > 5 ? 'text-red-600 font-medium' : v < -5 ? 'text-green-600' : ''}>{v > 0 ? '+' : ''}{v.toFixed(1)}%</span>;
+            return <span className={v > 5 ? 'text-red-600 font-medium' : v < -5 ? 'text-green-600' : ''}>{typeof v === 'number' ? `${v > 0 ? '+' : ''}${v.toFixed(1)}%` : '—'}
+%</span>;
           }},
         ],
       },
@@ -338,7 +339,8 @@ const REPORT_CATEGORIES: ReportCategory[] = [
           { key: 'avg_production_cost', header: 'Avg Prod Cost', align: 'right', render: (r) => <AmountDisplay value={r.avg_production_cost as string} /> },
           { key: 'profit_margin_pct', header: 'Margin %', align: 'right', sortable: true, render: (r) => {
             const v = parseFloat(r.profit_margin_pct as string || '0');
-            return r.profit_margin_pct ? <span className={v >= 20 ? 'text-green-600 font-medium' : v < 10 ? 'text-red-600' : ''}>{v.toFixed(1)}%</span> : '—';
+            return r.profit_margin_pct ? <span className={v >= 20 ? 'text-green-600 font-medium' : v < 10 ? 'text-red-600' : ''}>{typeof v === 'number' ? `${v > 0 ? '+' : ''}${v.toFixed(1)}%` : '—'}
+%</span> : '—';
           }},
         ],
       },

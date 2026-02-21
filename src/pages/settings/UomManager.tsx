@@ -118,7 +118,7 @@ export function UomManager() {
 
   const uomColumns: ColumnDef<UnitOfMeasurement>[] = [
     { key: 'name', header: 'Name', render: (row) => <span className="font-medium text-gray-900">{row.name}</span> },
-    { key: 'symbol', header: 'Symbol', render: (row) => <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{row.symbol}</span> },
+    { key: 'code', header: 'Symbol', render: (row) => <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{row.symbol}</span> },
     { key: 'base_unit', header: 'Base Unit' },
     { key: 'conversion_factor', header: 'Factor', align: 'right', render: (row) => row.conversion_factor ? String(row.conversion_factor) : '—' },
   ];

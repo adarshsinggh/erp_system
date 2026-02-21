@@ -11,9 +11,13 @@ import {
 
 export async function mastersRoutes(server: FastifyInstance) {
   // Categories
-  server.get('/categories', { preHandler: [authenticate] }, async (request) => {
-    const data = await categoryService.listCategories(request.user!.companyId);
-    return { success: true, data };
+  server.get('/categories', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const data = await categoryService.listCategories(request.user!.companyId);
+      return { success: true, data };
+    } catch (error: any) {
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to load categories' });
+    }
   });
 
   server.post('/categories', { preHandler: [authenticate] }, async (request, reply) => {
@@ -38,9 +42,13 @@ export async function mastersRoutes(server: FastifyInstance) {
   });
 
   // UOMs
-  server.get('/uoms', { preHandler: [authenticate] }, async (request) => {
-    const data = await uomService.listUoms(request.user!.companyId);
-    return { success: true, data };
+  server.get('/uoms', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const data = await uomService.listUoms(request.user!.companyId);
+      return { success: true, data };
+    } catch (error: any) {
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to load UOMs' });
+    }
   });
 
   server.post('/uoms', { preHandler: [authenticate] }, async (request, reply) => {
@@ -67,9 +75,13 @@ export async function mastersRoutes(server: FastifyInstance) {
   });
 
   // Brands
-  server.get('/brands', { preHandler: [authenticate] }, async (request) => {
-    const data = await brandService.listBrands(request.user!.companyId);
-    return { success: true, data };
+  server.get('/brands', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const data = await brandService.listBrands(request.user!.companyId);
+      return { success: true, data };
+    } catch (error: any) {
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to load brands' });
+    }
   });
 
   server.post('/brands', { preHandler: [authenticate] }, async (request, reply) => {
@@ -94,9 +106,13 @@ export async function mastersRoutes(server: FastifyInstance) {
   });
 
   // Manufacturers
-  server.get('/manufacturers', { preHandler: [authenticate] }, async (request) => {
-    const data = await manufacturerService.listManufacturers(request.user!.companyId);
-    return { success: true, data };
+  server.get('/manufacturers', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const data = await manufacturerService.listManufacturers(request.user!.companyId);
+      return { success: true, data };
+    } catch (error: any) {
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to load manufacturers' });
+    }
   });
 
   server.post('/manufacturers', { preHandler: [authenticate] }, async (request, reply) => {

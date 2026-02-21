@@ -59,24 +59,34 @@ class ItemService extends BaseService {
     if (!item) return null;
 
     // Get vendors for this item
-    const vendors = await this.db('item_vendor_mapping')
-      .where({ item_id: id, company_id: companyId, is_deleted: false })
-      .join('vendors', 'item_vendor_mapping.vendor_id', 'vendors.id')
-      .select(
-        'item_vendor_mapping.*',
-        'vendors.vendor_code',
-        'vendors.name as vendor_name'
-      );
+    let vendors: any[] = [];
+    try {
+      vendors = await this.db('item_vendor_mapping')
+        .where({ item_id: id, company_id: companyId, is_deleted: false })
+        .leftJoin('vendors', 'item_vendor_mapping.vendor_id', 'vendors.id')
+        .select(
+          'item_vendor_mapping.*',
+          'vendors.vendor_code',
+          'vendors.name as vendor_name'
+        );
+    } catch {
+      // Gracefully handle if no vendor mappings exist
+    }
 
     // Get alternatives
-    const alternatives = await this.db('item_alternatives')
-      .where({ item_id: id, company_id: companyId, is_deleted: false })
-      .join('items as alt', 'item_alternatives.alternative_item_id', 'alt.id')
-      .select(
-        'item_alternatives.*',
-        'alt.item_code as alt_item_code',
-        'alt.name as alt_item_name'
-      );
+    let alternatives: any[] = [];
+    try {
+      alternatives = await this.db('item_alternatives')
+        .where({ item_id: id, company_id: companyId, is_deleted: false })
+        .leftJoin('items as alt', 'item_alternatives.alternative_item_id', 'alt.id')
+        .select(
+          'item_alternatives.*',
+          'alt.item_code as alt_item_code',
+          'alt.name as alt_item_name'
+        );
+    } catch {
+      // Gracefully handle if no alternatives exist
+    }
 
     return { ...item, vendors, alternatives };
   }

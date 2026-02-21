@@ -3,11 +3,11 @@ import { BaseService, ListOptions } from './base.service';
 export interface CreateBomInput {
   company_id: string;
   product_id: string;
-  bom_code: string;
+  bom_code?: string;
   bom_version?: number;
   description?: string;
   output_quantity: number;
-  output_uom_id: string;
+  output_uom_id?: string;
   expected_yield_pct?: number;
   effective_from?: string;
   effective_to?: string;
@@ -34,6 +34,26 @@ class BomService extends BaseService {
 
   async createBom(input: CreateBomInput) {
     const { lines, ...headerData } = input;
+
+    // Auto-populate output_uom_id from the product if not provided
+    if (!headerData.output_uom_id) {
+      const product = await this.db('products')
+        .where({ id: input.product_id, company_id: input.company_id, is_deleted: false })
+        .select('primary_uom_id')
+        .first();
+      if (product?.primary_uom_id) {
+        headerData.output_uom_id = product.primary_uom_id;
+      }
+    }
+
+    // Auto-generate bom_code if not provided
+    if (!headerData.bom_code) {
+      const product = await this.db('products')
+        .where({ id: input.product_id })
+        .select('product_code')
+        .first();
+      headerData.bom_code = `BOM-${product?.product_code || 'NEW'}`;
+    }
 
     return await this.db.transaction(async (trx) => {
       // Auto-determine version

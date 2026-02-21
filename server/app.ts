@@ -47,6 +47,8 @@ import { reportRoutes } from './routes/reports';
 import { auditComplianceRoutes } from './routes/audit-compliance';
 // Phase 15: Sync & Multi-Device
 import { syncRoutes } from './routes/sync';
+// Phase 6: Purchase Management
+import { purchaseOrderRoutes } from './routes/purchase-orders';
 // Phase 16: UI/UX Polish — Dashboard & Shortcuts
 import { dashboardRoutes } from './routes/dashboard';
 
@@ -103,6 +105,8 @@ export async function buildServer() {
   await server.register(salesInvoiceRoutes, { prefix: '/api' });
   await server.register(creditNoteRoutes, { prefix: '/api' });
   await server.register(paymentReceiptRoutes, { prefix: '/api' });
+  // Phase 6: Purchase Management
+  await server.register(purchaseOrderRoutes, { prefix: '/api' });
   // Phase 7: Inventory Management
   await server.register(inventoryRoutes, { prefix: '/api' });
   await server.register(stockTransferRoutes, { prefix: '/api' });

@@ -61,10 +61,10 @@ export function DashboardPage() {
           ))
         ) : (
           <>
-            <KPICard label="Revenue (This Month)" value={data?.kpis?.revenue_this_month} prefix="₹" trend="+12%" />
+            <KPICard label="Revenue (This Month)" value={data?.kpis?.revenue_this_month} prefix="₹" />
             <KPICard label="Outstanding Receivables" value={data?.kpis?.outstanding_receivables} prefix="₹" warning />
-            <KPICard label="Inventory Value" value={data?.kpis?.inventory_value} prefix="₹" />
-            <KPICard label="Pending Orders" value={data?.kpis?.pending_orders} />
+            <KPICard label="Inventory Value" value={data?.kpis?.total_inventory_value} prefix="₹" />
+            <KPICard label="Low Stock Items" value={data?.kpis?.low_stock_items} />
           </>
         )}
       </div>
@@ -174,7 +174,8 @@ export function DashboardPage() {
 function KPICard({ label, value, prefix, trend, warning }: {
   label: string; value: any; prefix?: string; trend?: string; warning?: boolean;
 }) {
-  const display = value !== undefined && value !== null
+  const hasValue = value !== undefined && value !== null;
+  const display = hasValue
     ? (prefix === '₹' ? <AmountDisplay value={value} compact className="text-2xl font-bold text-gray-900" /> : <span className="text-2xl font-bold text-gray-900">{value}</span>)
     : <span className="text-2xl font-bold text-gray-300">—</span>;
 
@@ -183,7 +184,7 @@ function KPICard({ label, value, prefix, trend, warning }: {
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
       <div className="mt-2 flex items-end gap-2">
         {display}
-        {trend && (
+        {trend && hasValue && value > 0 && (
           <span className="text-xs font-medium text-emerald-600 mb-1">{trend}</span>
         )}
       </div>

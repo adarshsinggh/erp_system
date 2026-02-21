@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { deliveryChallansApi, DeliveryChallanDetail, DeliveryChallanLine } from '@/api/modules/delivery-challans.api';
+import { salesOrdersApi, SalesOrder } from '@/api/modules/sales-orders.api';
 import { customersApi, Customer } from '@/api/modules/customers.api';
 import { productsApi, Product } from '@/api/modules/products.api';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -64,6 +65,12 @@ export function DeliveryChallanForm() {
   const [productResults, setProductResults] = useState<Product[]>([]);
   const debouncedProdSearch = useDebounce(productSearch, 300);
 
+  // SO search
+  const [soSearch, setSoSearch] = useState('');
+  const [soResults, setSoResults] = useState<SalesOrder[]>([]);
+  const [showSoDropdown, setShowSoDropdown] = useState(false);
+  const debouncedSoSearch = useDebounce(soSearch, 300);
+
   const isDraft = status === 'draft';
   const readonly = !isDraft && isEdit;
 
@@ -81,14 +88,15 @@ export function DeliveryChallanForm() {
       const d = res.data;
       setStatus(d.status);
       setForm({
-        customer_id: d.customer_id || '', challan_date: d.challan_date || '',
+        customer_id: d.customer_id || '',
+        challan_date: d.challan_date ? String(d.challan_date).substring(0, 10) : '',
         sales_order_id: d.sales_order_id || '', warehouse_id: d.warehouse_id || '',
         shipping_address_id: d.shipping_address_id || '',
         transporter_name: d.transporter_name || '', vehicle_number: d.vehicle_number || '',
         lr_number: d.lr_number || '', e_way_bill_number: d.e_way_bill_number || '',
         internal_notes: d.internal_notes || '',
       });
-      if (d.sales_order) setSoNumber(d.sales_order.order_number);
+      if (d.sales_order) { setSoNumber(d.sales_order.order_number); setSoSearch(d.sales_order.order_number); }
       if (d.customer) { setSelectedCustomer(d.customer as unknown as Customer); setCustomerSearch(d.customer.name); }
       if (d.lines?.length) {
         setLines(d.lines.map((l) => ({
@@ -109,7 +117,22 @@ export function DeliveryChallanForm() {
   }, [debouncedCustSearch]);
 
   useEffect(() => {
-    if (debouncedProdSearch?.length >= 2)
+    if (debouncedSoSearch?.length >= 2) {
+      const params: any = { search: debouncedSoSearch, limit: 10, status: 'confirmed' };
+      if (form.customer_id) params.customer_id = form.customer_id;
+      salesOrdersApi.list(params).then((r) => setSoResults(r.data || [])).catch(() => {});
+    } else { setSoResults([]); }
+  }, [debouncedSoSearch]);
+
+  function selectSO(so: SalesOrder) {
+    setForm((f) => ({ ...f, sales_order_id: so.id }));
+    setSoSearch(so.order_number);
+    setSoNumber(so.order_number);
+    setShowSoDropdown(false);
+  }
+
+  useEffect(() => {
+    if (debouncedProdSearch?.length >= 1)
       productsApi.list({ search: debouncedProdSearch, limit: 10, status: 'active' }).then((r) => setProductResults(r.data || [])).catch(() => {});
     else setProductResults([]);
   }, [debouncedProdSearch]);
@@ -227,8 +250,23 @@ export function DeliveryChallanForm() {
           <FormField label="Challan Date" required>
             <Input type="date" value={form.challan_date} onChange={(e) => setForm((f) => ({ ...f, challan_date: e.target.value }))} disabled={readonly} />
           </FormField>
-          <FormField label="Sales Order ID" hint="Link to existing SO">
-            <Input value={form.sales_order_id} onChange={(e) => setForm((f) => ({ ...f, sales_order_id: e.target.value }))} placeholder="SO UUID" disabled={readonly} />
+          <FormField label="Sales Order" hint="Link to existing SO" className="relative">
+            <Input value={soSearch}
+              onChange={(e) => { setSoSearch(e.target.value); setShowSoDropdown(true); }}
+              onFocus={() => setShowSoDropdown(true)}
+              placeholder="Search SO number..."
+              disabled={readonly} />
+            {showSoDropdown && soResults.length > 0 && (
+              <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
+                {soResults.map((so) => (
+                  <button key={so.id} type="button" onClick={() => selectSO(so)}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm">
+                    <span className="font-mono font-medium">{so.order_number}</span>
+                    <span className="ml-2 text-xs text-gray-500">{so.customer?.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </FormField>
         </div>
 
@@ -253,7 +291,7 @@ export function DeliveryChallanForm() {
       {/* Lines */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Delivery Items</h3>
-        <div className="overflow-x-auto">
+        <div className="overflow-visible">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
@@ -277,7 +315,7 @@ export function DeliveryChallanForm() {
                           onChange={(e) => { setProductSearchIdx(idx); setProductSearch(e.target.value); }}
                           onFocus={() => setProductSearchIdx(idx)} placeholder="Search product..." className="!py-1 !text-xs h-8" />
                         {productSearchIdx === idx && productResults.length > 0 && (
-                          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-40 overflow-y-auto">
+                          <div className="absolute z-50 top-full left-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-48 overflow-y-auto min-w-[320px]">
                             {productResults.map((p) => (
                               <button key={p.id} type="button" onClick={() => selectProduct(idx, p)}
                                 className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-xs">

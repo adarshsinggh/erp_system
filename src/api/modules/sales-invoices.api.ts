@@ -14,7 +14,7 @@ export interface InvoiceLine {
   uom_id: string;
   uom_code?: string;
   unit_price: number;
-  discount_type: 'percentage' | 'amount';
+  discount_type: 'percentage' | 'fixed';
   discount_value: number;
   discount_amount?: number;
   line_subtotal?: number;
@@ -106,7 +106,7 @@ export const salesInvoicesApi = {
     apiClient.post<ApiResponse<SalesInvoiceDetail>>('/sales-invoices', data),
 
   createFromSO: (salesOrderId: string, data?: Record<string, unknown>) =>
-    apiClient.post<ApiResponse<SalesInvoiceDetail>>(`/sales-invoices/from-so/${salesOrderId}`, data),
+    apiClient.post<ApiResponse<SalesInvoiceDetail>>(`/sales-invoices/from-sales-order/${salesOrderId}`, data),
 
   update: (id: string, data: Partial<SalesInvoice> & { lines?: Partial<InvoiceLine>[] }) =>
     apiClient.put<ApiResponse<SalesInvoiceDetail>>(`/sales-invoices/${id}`, data),
@@ -115,17 +115,17 @@ export const salesInvoicesApi = {
     apiClient.del<ApiResponse<null>>(`/sales-invoices/${id}`),
 
   approve: (id: string) =>
-    apiClient.post<ApiResponse<SalesInvoice>>(`/sales-invoices/${id}/approve`),
+    apiClient.patch<ApiResponse<SalesInvoice>>(`/sales-invoices/${id}/status`, { status: 'approved' }),
 
   cancel: (id: string) =>
-    apiClient.post<ApiResponse<SalesInvoice>>(`/sales-invoices/${id}/cancel`),
+    apiClient.patch<ApiResponse<SalesInvoice>>(`/sales-invoices/${id}/status`, { status: 'cancelled' }),
 
-  setIrn: (id: string, data: { irn: string; irn_date: string }) =>
-    apiClient.post<ApiResponse<SalesInvoice>>(`/sales-invoices/${id}/set-irn`, data),
+  setIrn: (id: string, data: { irn: string }) =>
+    apiClient.patch<ApiResponse<SalesInvoice>>(`/sales-invoices/${id}/e-invoice`, data),
 
-  markOverdue: (id: string) =>
-    apiClient.post<ApiResponse<SalesInvoice>>(`/sales-invoices/${id}/mark-overdue`),
+  markOverdue: () =>
+    apiClient.post<ApiResponse<SalesInvoice>>('/sales-invoices/mark-overdue'),
 
   getCustomerOutstanding: (customerId: string) =>
-    apiClient.get<ApiResponse<CustomerOutstanding>>(`/sales-invoices/customer-outstanding/${customerId}`),
+    apiClient.get<ApiResponse<CustomerOutstanding>>(`/sales-invoices/outstanding/${customerId}`),
 };

@@ -15,10 +15,14 @@ export async function bomRoutes(server: FastifyInstance) {
   });
 
   server.get('/boms/:id', { preHandler: [authenticate] }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const bom = await bomService.getBomWithLines(id, request.user!.companyId);
-    if (!bom) return reply.code(404).send({ success: false, error: 'BOM not found' });
-    return { success: true, data: bom };
+    try {
+      const { id } = request.params as { id: string };
+      const bom = await bomService.getBomWithLines(id, request.user!.companyId);
+      if (!bom) return reply.code(404).send({ success: false, error: 'BOM not found' });
+      return { success: true, data: bom };
+    } catch (error: any) {
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to load BOM details' });
+    }
   });
 
   server.post('/boms', { preHandler: [authenticate] }, async (request, reply) => {

@@ -65,15 +65,20 @@ export async function manufacturingRoutes(server: FastifyInstance) {
   });
 
   // GET /manufacturing/work-orders
-  server.get('/manufacturing/work-orders', { preHandler: [authenticate] }, async (request) => {
-    const q = request.query as any;
-    return { success: true, ...await workOrderService.listWorkOrders({
-      companyId: request.user!.companyId,
-      page: parseInt(q.page) || 1, limit: parseInt(q.limit) || 50,
-      search: q.search, status: q.status, branch_id: q.branch_id, product_id: q.product_id,
-      priority: q.priority, from_date: q.from_date, to_date: q.to_date, sales_order_id: q.sales_order_id,
-      sortBy: q.sort_by || 'work_order_date', sortOrder: q.sort_order || 'desc',
-    })};
+  server.get('/manufacturing/work-orders', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const q = request.query as any;
+      return { success: true, ...await workOrderService.listWorkOrders({
+        companyId: request.user!.companyId,
+        page: parseInt(q.page) || 1, limit: parseInt(q.limit) || 50,
+        search: q.search, status: q.status, branch_id: q.branch_id, product_id: q.product_id,
+        priority: q.priority, from_date: q.from_date, to_date: q.to_date, sales_order_id: q.sales_order_id,
+        sortBy: q.sort_by || 'work_order_date', sortOrder: q.sort_order || 'desc',
+      })};
+    } catch (error: any) {
+      server.log.error(error);
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to fetch work orders', data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
+    }
   });
 
   // GET /manufacturing/work-orders/:id

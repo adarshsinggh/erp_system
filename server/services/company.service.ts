@@ -86,7 +86,8 @@ export class CompanyService {
         .insert([
           { company_id: companyId, name: 'Admin', description: 'Full system access', hierarchy_level: 100, is_system_role: true },
           { company_id: companyId, name: 'Manager', description: 'Department manager with approval rights', hierarchy_level: 75, is_system_role: true },
-          { company_id: companyId, name: 'Supervisor', description: 'Team supervisor', hierarchy_level: 50, is_system_role: true },
+          { company_id: companyId, name: 'Accountant', description: 'Financial and accounting operations', hierarchy_level: 50, is_system_role: true },
+          { company_id: companyId, name: 'Store Keeper', description: 'Inventory and warehouse operations', hierarchy_level: 35, is_system_role: true },
           { company_id: companyId, name: 'Operator', description: 'Data entry and basic operations', hierarchy_level: 25, is_system_role: true },
           { company_id: companyId, name: 'Viewer', description: 'Read-only access', hierarchy_level: 10, is_system_role: true },
         ])
@@ -161,9 +162,22 @@ export class CompanyService {
 
   async updateCompany(companyId: string, data: Partial<CreateCompanyInput>, userId: string) {
     const db = getDb();
+    // Whitelist only valid company columns to avoid DB trigger errors
+    const allowedFields = [
+      'name', 'display_name', 'address_line1', 'address_line2',
+      'city', 'state', 'pincode', 'country', 'phone', 'email',
+      'website', 'gstin', 'pan', 'tan', 'cin', 'base_currency',
+      'financial_year_start', 'license_key', 'license_tier',
+    ];
+    const sanitized: Record<string, any> = { updated_by: userId };
+    for (const key of allowedFields) {
+      if (key in data) {
+        sanitized[key] = (data as any)[key];
+      }
+    }
     const [updated] = await db('companies')
       .where({ id: companyId, is_deleted: false })
-      .update({ ...data, updated_by: userId })
+      .update(sanitized)
       .returning('*');
     return updated;
   }

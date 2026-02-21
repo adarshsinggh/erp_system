@@ -85,7 +85,7 @@ export const paymentReceiptsApi = {
     apiClient.get<ApiResponse<CustomerPaymentHistory[]>>(`/payment-receipts/customer-history/${customerId}`),
 
   getUnallocated: (customerId: string) =>
-    apiClient.get<ApiResponse<UnallocatedPayment[]>>(`/payment-receipts/unallocated/${customerId}`),
+    apiClient.get<ApiResponse<UnallocatedPayment[]>>(`/payment-receipts/advances/${customerId}`),
 
   allocate: (id: string, data: { invoice_id: string }) =>
     apiClient.post<ApiResponse<PaymentReceipt>>(`/payment-receipts/${id}/allocate`, data),

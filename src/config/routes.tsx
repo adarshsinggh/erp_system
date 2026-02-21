@@ -135,8 +135,15 @@ const NotificationsPage = lazy(() => import('../pages/system/NotificationsPage')
 const BackupsPage = lazy(() => import('../pages/system/BackupsPage').then((m) => ({ default: m.BackupsPage })));
 
 
+function LogoutRoute() {
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+  React.useEffect(() => { clearAuth(); }, []);
+  return <Navigate to="/login" replace />;
+}
+
 export const router = createBrowserRouter([
   { path: '/login', element: <LazyPage component={LoginPage} /> },
+  { path: '/logout', element: <LogoutRoute /> },
   {
     path: '/',
     element: <ProtectedRoute><AppLayout /></ProtectedRoute>,
@@ -190,6 +197,8 @@ export const router = createBrowserRouter([
       { path: 'sales/challans', element: <LazyPage component={DeliveryChallansList} /> },
       { path: 'sales/challans/new', element: <LazyPage component={DeliveryChallanForm} /> },
       { path: 'sales/challans/:id', element: <LazyPage component={DeliveryChallanForm} /> },
+      { path: 'sales/delivery-challans', element: <Navigate to="/sales/challans" replace /> },
+      { path: 'sales/delivery-challans/:id', element: <Navigate to="/sales/challans" replace /> },
       { path: 'sales/invoices', element: <LazyPage component={SalesInvoicesList} /> },
       { path: 'sales/invoices/new', element: <LazyPage component={SalesInvoiceForm} /> },
       { path: 'sales/invoices/:id', element: <LazyPage component={SalesInvoiceForm} /> },

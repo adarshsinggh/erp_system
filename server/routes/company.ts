@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { companyService } from '../services/company.service';
+import { authService } from '../services/auth.service';
 
 export async function companyRoutes(server: FastifyInstance) {
   // POST /api/setup - First time company setup (no auth required)
@@ -57,6 +58,28 @@ export async function companyRoutes(server: FastifyInstance) {
       return { success: true, data: company };
     } catch (error: any) {
       return reply.code(500).send({ success: false, error: error.message });
+    }
+  });
+
+    // PUT /api/companies/:id - Update company profile
+  server.put('/companies/:id', async (request, reply) => {
+    try {
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.code(401).send({ success: false, error: 'Authentication required' });
+      }
+      const { userId } = authService.verifyToken(authHeader.substring(7));
+      const { id } = request.params as { id: string };
+      const updated = await companyService.updateCompany(id, request.body as any, userId);
+      if (!updated) return reply.code(404).send({ success: false, error: 'Company not found' });
+      return { success: true, data: updated };
+    } catch (error: any) {
+      server.log.error(error);
+      // Sanitize error message — never expose raw SQL to the client
+      const safeMessage = error.message?.includes('sync_status') || error.message?.includes('update "')
+        ? 'Failed to update company profile. Please try again.'
+        : (error.message || 'Failed to update company');
+      return reply.code(400).send({ success: false, error: safeMessage });
     }
   });
 }

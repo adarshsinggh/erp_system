@@ -274,10 +274,10 @@ class WorkOrderService extends BaseService {
     const total = parseInt(String(countResult?.total || '0'), 10);
 
     const data = await query.clone()
-      .join('products as p', 'wo.product_id', 'p.id')
-      .join('branches as b', 'wo.branch_id', 'b.id')
-      .join('warehouses as sw', 'wo.source_warehouse_id', 'sw.id')
-      .join('warehouses as tw', 'wo.target_warehouse_id', 'tw.id')
+      .leftJoin('products as p', 'wo.product_id', 'p.id')
+      .leftJoin('branches as b', 'wo.branch_id', 'b.id')
+      .leftJoin('warehouses as sw', 'wo.source_warehouse_id', 'sw.id')
+      .leftJoin('warehouses as tw', 'wo.target_warehouse_id', 'tw.id')
       .leftJoin('units_of_measurement as u', 'wo.uom_id', 'u.id')
       .select(
         'wo.*',

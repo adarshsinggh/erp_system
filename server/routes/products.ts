@@ -15,10 +15,14 @@ export async function productRoutes(server: FastifyInstance) {
   });
 
   server.get('/products/:id', { preHandler: [authenticate] }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const product = await productService.getProductWithDetails(id, request.user!.companyId);
-    if (!product) return reply.code(404).send({ success: false, error: 'Product not found' });
-    return { success: true, data: product };
+    try {
+      const { id } = request.params as { id: string };
+      const product = await productService.getProductWithDetails(id, request.user!.companyId);
+      if (!product) return reply.code(404).send({ success: false, error: 'Product not found' });
+      return { success: true, data: product };
+    } catch (error: any) {
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to load product details' });
+    }
   });
 
   server.post('/products', { preHandler: [authenticate] }, async (request, reply) => {

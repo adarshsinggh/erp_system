@@ -34,6 +34,20 @@ export async function authRoutes(server: FastifyInstance) {
     }
   });
 
+  // GET /api/auth/verify — alternative verify endpoint
+  server.get('/auth/verify', async (request, reply) => {
+    try {
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.code(401).send({ success: false, error: 'No token provided' });
+      }
+      const payload = authService.verifyToken(authHeader.substring(7));
+      return { success: true, data: payload };
+    } catch (error: any) {
+      return reply.code(401).send({ success: false, error: 'Invalid or expired token' });
+    }
+  });
+
   // POST /api/auth/change-password
   server.post('/auth/change-password', async (request, reply) => {
     try {

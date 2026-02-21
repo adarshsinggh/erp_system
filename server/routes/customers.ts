@@ -14,11 +14,20 @@ export async function customerRoutes(server: FastifyInstance) {
     return { success: true, ...result };
   });
 
+  server.get('/customers/next-code', { preHandler: [authenticate] }, async (request) => {
+    const code = await customerService.generateCustomerCode(request.user!.companyId);
+    return { success: true, data: { code } };
+  });
+
   server.get('/customers/:id', { preHandler: [authenticate] }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const customer = await customerService.getCustomerWithDetails(id, request.user!.companyId);
-    if (!customer) return reply.code(404).send({ success: false, error: 'Customer not found' });
-    return { success: true, data: customer };
+    try {
+      const { id } = request.params as { id: string };
+      const customer = await customerService.getCustomerWithDetails(id, request.user!.companyId);
+      if (!customer) return reply.code(404).send({ success: false, error: 'Customer not found' });
+      return { success: true, data: customer };
+    } catch (error: any) {
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to load customer details' });
+    }
   });
 
   server.post('/customers', { preHandler: [authenticate] }, async (request, reply) => {

@@ -270,10 +270,26 @@ export function CompanyProfile() {
           <h3 className="text-sm font-semibold text-gray-900 mb-4">Financial Year & License</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField label="Financial Year Start">
-              <p className="text-sm text-gray-900 py-2">{formatDate(company.financial_year_start)}</p>
+              <p className="text-sm text-gray-900 py-2">
+                {(() => {
+                  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                  const m = Number(company.financial_year_start);
+                  return m >= 1 && m <= 12 ? months[m - 1] : '—';
+                })()}
+              </p>
             </FormField>
             <FormField label="Financial Year End">
-              <p className="text-sm text-gray-900 py-2">{formatDate(company.financial_year_end)}</p>
+              <p className="text-sm text-gray-900 py-2">
+                {(() => {
+                  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                  const m = Number(company.financial_year_start);
+                  if (m >= 1 && m <= 12) {
+                    const endMonth = m === 1 ? 11 : m - 2; // month before start
+                    return months[endMonth];
+                  }
+                  return '—';
+                })()}
+              </p>
             </FormField>
             <FormField label="License Tier">
               <p className="text-sm text-gray-900 py-2 capitalize">{company.license_tier || '—'}</p>

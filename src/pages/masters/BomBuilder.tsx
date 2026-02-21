@@ -55,6 +55,7 @@ export function BomBuilder() {
 
   // Dropdowns
   const [products, setProducts] = useState<{ value: string; label: string }[]>([]);
+  const [productMap, setProductMap] = useState<Record<string, any>>({});
   const [uoms, setUoms] = useState<{ value: string; label: string }[]>([]);
 
   // Component search
@@ -78,13 +79,17 @@ export function BomBuilder() {
   }, [id]);
 
   async function loadDropdowns() {
-    try {
-      const [prodRes, uomRes] = await Promise.all([
-        productsApi.list({ limit: 200 }), mastersApi.listUoms(),
-      ]);
-      setProducts((prodRes.data || []).map((p: any) => ({ value: p.id, label: `${p.product_code} — ${p.name}` })));
-      setUoms((uomRes.data || []).map((u: any) => ({ value: u.id, label: `${u.name} (${u.symbol || u.code})` })));
-    } catch {} // silent
+    const [prodRes, uomRes] = await Promise.allSettled([
+      productsApi.list({ limit: 200 }), mastersApi.listUoms(),
+    ]);
+    if (prodRes.status === 'fulfilled') {
+      const prods = prodRes.value.data || [];
+      setProducts(prods.map((p: any) => ({ value: p.id, label: `${p.product_code} — ${p.name}` })));
+      const pMap: Record<string, any> = {};
+      prods.forEach((p: any) => { pMap[p.id] = p; });
+      setProductMap(pMap);
+    }
+    if (uomRes.status === 'fulfilled') setUoms((uomRes.value.data || []).map((u: any) => ({ value: u.id, label: `${u.name} (${u.symbol || u.code || ''})` })));
   }
 
   async function loadBom() {
@@ -192,12 +197,17 @@ export function BomBuilder() {
         await bomsApi.updateLines(id!, buildLinesPayload());
         toast.success('BOM lines updated');
       } else {
+        // Get output_uom_id from the selected product's primary UOM
+        const selectedProduct = productMap[productId];
+        const outputUomId = selectedProduct?.primary_uom_id;
+
         await bomsApi.create({
           product_id: productId,
           description,
           effective_from: effectiveFrom || undefined,
           effective_to: effectiveTo || undefined,
           output_quantity: parseFloat(outputQty) || 1,
+          output_uom_id: outputUomId,
           lines: buildLinesPayload(),
         });
         toast.success('BOM created');

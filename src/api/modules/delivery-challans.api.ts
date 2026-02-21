@@ -84,7 +84,7 @@ export const deliveryChallansApi = {
     apiClient.post<ApiResponse<DeliveryChallan>>(`/delivery-challans/${id}/dispatch`),
 
   deliver: (id: string) =>
-    apiClient.post<ApiResponse<DeliveryChallan>>(`/delivery-challans/${id}/deliver`),
+    apiClient.post<ApiResponse<DeliveryChallan>>(`/delivery-challans/${id}/delivered`),
 
   cancel: (id: string) =>
     apiClient.post<ApiResponse<DeliveryChallan>>(`/delivery-challans/${id}/cancel`),
