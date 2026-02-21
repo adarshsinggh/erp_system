@@ -265,6 +265,33 @@ export async function batchSerialRoutes(server: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────
+  // GET /inventory/serial-numbers — List distinct serial numbers
+  //
+  // Query params: page?, limit?, search?, item_id?, warehouse_id?
+  // ──────────────────────────────────────────────────────────
+  server.get('/inventory/serial-numbers', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const { page, limit, search, item_id, warehouse_id } = request.query as any;
+
+      const result = await batchSerialService.listSerialNumbers(
+        request.user!.companyId,
+        {
+          page: parseInt(page) || 1,
+          limit: parseInt(limit) || 50,
+          search,
+          item_id,
+          warehouse_id,
+        }
+      );
+
+      return { success: true, ...result };
+    } catch (error: any) {
+      server.log.error(error);
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to fetch serial numbers' });
+    }
+  });
+
+  // ──────────────────────────────────────────────────────────
   // GET /inventory/serial-search — Search by serial number
   // Full traceability chain for a serial number.
   //

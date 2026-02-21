@@ -296,7 +296,10 @@ export function StockTransferForm() {
               options={branches.map((b) => ({ value: b.id, label: b.name }))} placeholder="Select branch" disabled={readonly} />
           </FormField>
           <FormField label="From Warehouse" required>
-            <Select value={form.from_warehouse_id} onChange={(e) => setForm((f) => ({ ...f, from_warehouse_id: e.target.value }))}
+            <Select value={form.from_warehouse_id} onChange={(e) => {
+              const wh = warehouses.find((w) => w.id === e.target.value);
+              setForm((f) => ({ ...f, from_warehouse_id: e.target.value, from_branch_id: wh?.branch_id || f.from_branch_id }));
+            }}
               options={fromWarehouses.map((w) => ({ value: w.id, label: `${w.name} (${w.code})` }))} placeholder="Select warehouse" disabled={readonly} />
           </FormField>
           <div />
@@ -306,7 +309,10 @@ export function StockTransferForm() {
               options={branches.map((b) => ({ value: b.id, label: b.name }))} placeholder="Select branch" disabled={readonly} />
           </FormField>
           <FormField label="To Warehouse" required>
-            <Select value={form.to_warehouse_id} onChange={(e) => setForm((f) => ({ ...f, to_warehouse_id: e.target.value }))}
+            <Select value={form.to_warehouse_id} onChange={(e) => {
+              const wh = warehouses.find((w) => w.id === e.target.value);
+              setForm((f) => ({ ...f, to_warehouse_id: e.target.value, to_branch_id: wh?.branch_id || f.to_branch_id }));
+            }}
               options={toWarehouses.map((w) => ({ value: w.id, label: `${w.name} (${w.code})` }))} placeholder="Select warehouse" disabled={readonly} />
           </FormField>
           <div />

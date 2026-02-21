@@ -533,6 +533,112 @@ class BatchSerialService extends BaseService {
     };
   }
 
+  // ──────── LIST SERIAL NUMBERS ────────
+  // Returns paginated list of distinct serial numbers with latest info.
+
+  async listSerialNumbers(
+    companyId: string,
+    options: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      item_id?: string;
+      warehouse_id?: string;
+    } = {}
+  ) {
+    const pg = options.page || 1;
+    const lim = options.limit || 50;
+    const offset = (pg - 1) * lim;
+
+    let baseQuery = this.db('stock_ledger as sl')
+      .leftJoin('items as i', 'sl.item_id', 'i.id')
+      .join('warehouses as w', 'sl.warehouse_id', 'w.id')
+      .where('sl.company_id', companyId)
+      .andWhere('sl.serial_number', '!=', '')
+      .whereNotNull('sl.serial_number');
+
+    if (options.search) {
+      baseQuery = baseQuery.andWhere(function () {
+        this.whereRaw('LOWER(sl.serial_number) LIKE ?', [`%${options.search!.toLowerCase()}%`])
+          .orWhereRaw('LOWER(i.name) LIKE ?', [`%${options.search!.toLowerCase()}%`])
+          .orWhereRaw('LOWER(i.item_code) LIKE ?', [`%${options.search!.toLowerCase()}%`]);
+      });
+    }
+
+    if (options.item_id) {
+      baseQuery = baseQuery.andWhere('sl.item_id', options.item_id);
+    }
+
+    if (options.warehouse_id) {
+      baseQuery = baseQuery.andWhere('sl.warehouse_id', options.warehouse_id);
+    }
+
+    // Count distinct serial numbers
+    const [{ count }] = await baseQuery.clone()
+      .countDistinct('sl.serial_number as count');
+    const total = parseInt(count as string) || 0;
+
+    // Get distinct serial numbers with aggregated info
+    // Use a subquery approach: get latest entry per serial number
+    const rows = await this.db
+      .from(
+        this.db.raw(`(
+          SELECT DISTINCT ON (sl.serial_number)
+            sl.serial_number,
+            sl.item_id,
+            sl.warehouse_id,
+            sl.transaction_type,
+            sl.transaction_date,
+            sl.quantity_in,
+            sl.quantity_out,
+            sl.reference_number,
+            i.name as item_name,
+            i.item_code,
+            w.name as warehouse_name
+          FROM stock_ledger sl
+          LEFT JOIN items i ON sl.item_id = i.id
+          JOIN warehouses w ON sl.warehouse_id = w.id
+          WHERE sl.company_id = ?
+            AND sl.serial_number IS NOT NULL
+            AND sl.serial_number != ''
+            ${options.search ? `AND (LOWER(sl.serial_number) LIKE ? OR LOWER(i.name) LIKE ? OR LOWER(i.item_code) LIKE ?)` : ''}
+            ${options.item_id ? `AND sl.item_id = ?` : ''}
+            ${options.warehouse_id ? `AND sl.warehouse_id = ?` : ''}
+          ORDER BY sl.serial_number, sl.transaction_date DESC, sl.created_at DESC
+        ) as sub`,
+          [
+            companyId,
+            ...(options.search ? [`%${options.search.toLowerCase()}%`, `%${options.search.toLowerCase()}%`, `%${options.search.toLowerCase()}%`] : []),
+            ...(options.item_id ? [options.item_id] : []),
+            ...(options.warehouse_id ? [options.warehouse_id] : []),
+          ]
+        )
+      )
+      .select('*')
+      .orderBy('transaction_date', 'desc')
+      .offset(offset)
+      .limit(lim);
+
+    return {
+      data: rows.map((r: any) => ({
+        serial_number: r.serial_number,
+        item_id: r.item_id,
+        item_code: r.item_code,
+        item_name: r.item_name,
+        warehouse_name: r.warehouse_name,
+        last_transaction_type: r.transaction_type,
+        last_transaction_date: r.transaction_date,
+        last_direction: parseNum(r.quantity_in) > 0 ? 'in' : 'out',
+        last_quantity: parseNum(r.quantity_in) > 0 ? parseNum(r.quantity_in) : parseNum(r.quantity_out),
+        reference_number: r.reference_number,
+      })),
+      total,
+      page: pg,
+      limit: lim,
+      totalPages: Math.ceil(total / lim),
+    };
+  }
+
   // ──────── BATCH SUMMARY BY WAREHOUSE ────────
   // For a given item, shows batch quantities across warehouses.
 

@@ -114,6 +114,10 @@ export function StockSummaryPage() {
       render: (row) => <span className="text-sm text-gray-600">{row.warehouse_name}</span>,
     },
     {
+      key: 'uom_symbol', header: 'UOM', width: '70px',
+      render: (row) => <span className="text-xs text-gray-500" title={row.uom_name}>{row.uom_symbol || row.uom_name || '—'}</span>,
+    },
+    {
       key: 'available_quantity', header: 'Available', align: 'right', sortable: true, width: '100px',
       render: (row) => <span className="text-sm font-semibold text-gray-900">{formatIndianNumber(row.available_quantity, 2)}</span>,
     },

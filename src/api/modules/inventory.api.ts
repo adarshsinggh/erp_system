@@ -10,6 +10,8 @@ export interface StockSummaryItem {
   item_name: string;
   warehouse_id: string;
   warehouse_name: string;
+  uom_name: string;
+  uom_symbol: string;
   available_quantity: number;
   reserved_quantity: number;
   on_order_quantity: number;

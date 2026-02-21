@@ -29,33 +29,38 @@ export async function inventoryRoutes(server: FastifyInstance) {
   //   transaction_type, reference_type, from_date, to_date,
   //   sort_by, sort_order
   // ──────────────────────────────────────────────────────────
-  server.get('/inventory/stock-ledger', { preHandler: [authenticate] }, async (request) => {
-    const {
-      page, limit,
-      branch_id, warehouse_id,
-      item_id, product_id,
-      transaction_type, reference_type,
-      from_date, to_date,
-      sort_by, sort_order,
-    } = request.query as any;
+  server.get('/inventory/stock-ledger', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const {
+        page, limit,
+        branch_id, warehouse_id,
+        item_id, product_id,
+        transaction_type, reference_type,
+        from_date, to_date,
+        sort_by, sort_order,
+      } = request.query as any;
 
-    const result = await inventoryService.getStockLedgerEntries({
-      companyId: request.user!.companyId,
-      page: parseInt(page) || 1,
-      limit: parseInt(limit) || 50,
-      branch_id,
-      warehouse_id,
-      item_id,
-      product_id,
-      transaction_type,
-      reference_type,
-      from_date,
-      to_date,
-      sortBy: sort_by || 'transaction_date',
-      sortOrder: sort_order || 'desc',
-    });
+      const result = await inventoryService.getStockLedgerEntries({
+        companyId: request.user!.companyId,
+        page: parseInt(page) || 1,
+        limit: parseInt(limit) || 50,
+        branch_id,
+        warehouse_id,
+        item_id,
+        product_id,
+        transaction_type,
+        reference_type,
+        from_date,
+        to_date,
+        sortBy: sort_by || 'transaction_date',
+        sortOrder: sort_order || 'desc',
+      });
 
-    return { success: true, ...result };
+      return { success: true, ...result };
+    } catch (error: any) {
+      server.log.error(error);
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to fetch stock ledger', data: [], total: 0, page: 1, limit: 50, totalPages: 0 });
+    }
   });
 
   // ──────────────────────────────────────────────────────────
@@ -104,41 +109,46 @@ export async function inventoryRoutes(server: FastifyInstance) {
   // Query params (required): warehouse_id + (item_id OR product_id)
   // ──────────────────────────────────────────────────────────
   server.get('/inventory/stock-balance', { preHandler: [authenticate] }, async (request, reply) => {
-    const { warehouse_id, item_id, product_id } = request.query as any;
+    try {
+      const { warehouse_id, item_id, product_id } = request.query as any;
 
-    if (!warehouse_id) {
-      return reply.code(400).send({ success: false, error: 'warehouse_id is required' });
+      if (!warehouse_id) {
+        return reply.code(400).send({ success: false, error: 'warehouse_id is required' });
+      }
+      if (!item_id && !product_id) {
+        return reply.code(400).send({ success: false, error: 'Either item_id or product_id is required' });
+      }
+
+      const balance = await inventoryService.getStockBalance(
+        request.user!.companyId,
+        warehouse_id,
+        item_id || undefined,
+        product_id || undefined
+      );
+
+      if (!balance) {
+        return {
+          success: true,
+          data: {
+            available_quantity: 0,
+            reserved_quantity: 0,
+            on_order_quantity: 0,
+            in_production_quantity: 0,
+            free_quantity: 0,
+            valuation_rate: null,
+            total_value: null,
+            uom_id: null,
+            last_movement_date: null,
+          },
+          message: 'No stock record found. Item has zero stock in this warehouse.',
+        };
+      }
+
+      return { success: true, data: balance };
+    } catch (error: any) {
+      server.log.error(error);
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to fetch stock balance' });
     }
-    if (!item_id && !product_id) {
-      return reply.code(400).send({ success: false, error: 'Either item_id or product_id is required' });
-    }
-
-    const balance = await inventoryService.getStockBalance(
-      request.user!.companyId,
-      warehouse_id,
-      item_id || undefined,
-      product_id || undefined
-    );
-
-    if (!balance) {
-      return {
-        success: true,
-        data: {
-          available_quantity: 0,
-          reserved_quantity: 0,
-          on_order_quantity: 0,
-          in_production_quantity: 0,
-          free_quantity: 0,
-          valuation_rate: null,
-          total_value: null,
-          uom_id: null,
-          last_movement_date: null,
-        },
-        message: 'No stock record found. Item has zero stock in this warehouse.',
-      };
-    }
-
-    return { success: true, data: balance };
   });
 
   // ──────────────────────────────────────────────────────────

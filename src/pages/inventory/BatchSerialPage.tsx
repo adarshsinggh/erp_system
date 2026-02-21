@@ -1,6 +1,6 @@
 // src/pages/inventory/BatchSerialPage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { batchSerialApi, StockBatch, BatchMovement, BatchDistribution, SerialTraceEntry } from '@/api/modules/batch-serial.api';
+import { batchSerialApi, StockBatch, BatchMovement, BatchDistribution, SerialTraceEntry, SerialNumberEntry } from '@/api/modules/batch-serial.api';
 import { DataTable, ColumnDef } from '@/components/shared/DataTable';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -79,7 +79,7 @@ function BatchesTab() {
   const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
-    batchSerialApi.getExpiringSoon(30).then((r) => setExpiringSoonCount((r.data || []).length)).catch(() => {});
+    batchSerialApi.getExpiringSoon(30).then((r) => setExpiringSoonCount(r.total || (r.data || []).length)).catch(() => {});
   }, []);
 
   const loadData = useCallback(async () => {
@@ -111,7 +111,9 @@ function BatchesTab() {
         batchSerialApi.getHistory(batchId),
         batchSerialApi.getDistribution(batchId),
       ]);
-      setBatchHistory(histRes.data || []);
+      // getHistory returns { data: { ...batch, movements: [...] } }
+      const batchDetail = histRes.data as any;
+      setBatchHistory(batchDetail?.movements || []);
       setBatchDistribution(distRes.data || []);
     } catch (err: any) { toast.error(err.message); }
     finally { setDetailLoading(false); }
@@ -306,6 +308,155 @@ function BatchesTab() {
 // ─── Serial Numbers Tab ─────────────────────────────────────────
 
 function SerialTab() {
+  const [subTab, setSubTab] = useState<'list' | 'lookup'>('list');
+
+  return (
+    <div>
+      {/* Sub-tabs */}
+      <div className="flex gap-1 mb-4">
+        <button
+          onClick={() => setSubTab('list')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+            subTab === 'list' ? 'bg-brand-50 text-brand-700 border border-brand-200' : 'text-gray-500 hover:text-gray-700 border border-transparent'
+          }`}
+        >
+          All Serials
+        </button>
+        <button
+          onClick={() => setSubTab('lookup')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+            subTab === 'lookup' ? 'bg-brand-50 text-brand-700 border border-brand-200' : 'text-gray-500 hover:text-gray-700 border border-transparent'
+          }`}
+        >
+          Trace Lookup
+        </button>
+      </div>
+
+      {subTab === 'list' ? <SerialListView /> : <SerialLookupView />}
+    </div>
+  );
+}
+
+function SerialListView() {
+  const [data, setData] = useState<SerialNumberEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 50;
+  const debouncedSearch = useDebounce(search);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await batchSerialApi.listSerials({
+        page, limit,
+        search: debouncedSearch || undefined,
+      });
+      setData(res.data || []);
+      setTotal(res.total || 0);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, debouncedSearch]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
+
+  const TYPE_COLORS: Record<string, string> = {
+    grn_receipt: 'text-green-600', production_in: 'text-green-600',
+    production_out: 'text-red-600', sales_dispatch: 'text-red-600',
+    transfer_in: 'text-blue-600', transfer_out: 'text-orange-600',
+    adjustment: 'text-purple-600', scrap: 'text-gray-600',
+  };
+
+  return (
+    <div>
+      {/* Filters */}
+      <div className="flex items-center gap-3 mb-4">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by serial, item..." className="w-72" />
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-2.5 px-3 text-gray-500 font-medium">Serial Number</th>
+              <th className="text-left py-2.5 px-3 text-gray-500 font-medium">Item</th>
+              <th className="text-left py-2.5 px-3 text-gray-500 font-medium w-32">Warehouse</th>
+              <th className="text-left py-2.5 px-3 text-gray-500 font-medium w-32">Last Transaction</th>
+              <th className="text-left py-2.5 px-3 text-gray-500 font-medium w-20">Dir</th>
+              <th className="text-right py-2.5 px-3 text-gray-500 font-medium w-20">Qty</th>
+              <th className="text-left py-2.5 px-3 text-gray-500 font-medium w-28">Reference</th>
+              <th className="text-left py-2.5 px-3 text-gray-500 font-medium w-24">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="border-b border-gray-100">
+                  {Array.from({ length: 8 }).map((_, j) => (
+                    <td key={j} className="py-3 px-3"><div className="skeleton h-4 rounded" /></td>
+                  ))}
+                </tr>
+              ))
+            ) : data.length === 0 ? (
+              <tr><td colSpan={8} className="py-12 text-center text-gray-400">No serial numbers found</td></tr>
+            ) : (
+              data.map((entry, i) => (
+                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50/50">
+                  <td className="py-2 px-3">
+                    <span className="font-mono text-xs font-medium text-brand-700">{entry.serial_number}</span>
+                  </td>
+                  <td className="py-2 px-3">
+                    <span className="font-mono text-xs text-gray-500">{entry.item_code}</span>
+                    <span className="text-sm text-gray-700 ml-1">{entry.item_name}</span>
+                  </td>
+                  <td className="py-2 px-3 text-sm text-gray-600">{entry.warehouse_name}</td>
+                  <td className="py-2 px-3">
+                    <span className={`text-xs font-medium ${TYPE_COLORS[entry.last_transaction_type] || 'text-gray-600'}`}>
+                      {entry.last_transaction_type.replace(/_/g, ' ')}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3">
+                    <span className={`text-xs font-semibold ${entry.last_direction === 'in' ? 'text-green-600' : 'text-red-600'}`}>
+                      {entry.last_direction === 'in' ? '↑ IN' : '↓ OUT'}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 text-right text-xs font-medium">{formatIndianNumber(entry.last_quantity, 2)}</td>
+                  <td className="py-2 px-3">
+                    <span className="font-mono text-xs text-brand-600">{entry.reference_number || '—'}</span>
+                  </td>
+                  <td className="py-2 px-3 text-xs">{formatDate(entry.last_transaction_date)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+
+        {/* Pagination */}
+        {total > limit && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+            <span className="text-xs text-gray-500">
+              Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
+            </span>
+            <div className="flex gap-1">
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}
+                className="px-3 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40">Prev</button>
+              <button onClick={() => setPage(page + 1)} disabled={page * limit >= total}
+                className="px-3 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40">Next</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SerialLookupView() {
   const [serialNumber, setSerialNumber] = useState('');
   const [results, setResults] = useState<SerialTraceEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -360,7 +511,7 @@ function SerialTab() {
           {results.length === 0 ? (
             <div className="py-12 text-center">
               <div className="text-gray-300 text-4xl mb-2">🔍</div>
-              <p className="text-gray-500 text-sm">No traceability records found for "{serialNumber}"</p>
+              <p className="text-gray-500 text-sm">No traceability records found for &quot;{serialNumber}&quot;</p>
             </div>
           ) : (
             <>

@@ -51,6 +51,19 @@ export interface SerialTraceEntry {
   transaction_date: string;
 }
 
+export interface SerialNumberEntry {
+  serial_number: string;
+  item_id: string;
+  item_code: string;
+  item_name: string;
+  warehouse_name: string;
+  last_transaction_type: string;
+  last_transaction_date: string;
+  last_direction: 'in' | 'out';
+  last_quantity: number;
+  reference_number: string;
+}
+
 export interface BatchListParams extends ListParams {
   item_id?: string;
   vendor_id?: string;
@@ -79,17 +92,20 @@ export const batchSerialApi = {
     apiClient.patch<ApiResponse<StockBatch>>(`/inventory/batches/${id}/status`, { status }),
 
   getHistory: (id: string) =>
-    apiClient.get<ApiResponse<BatchMovement[]>>(`/inventory/batches/${id}/history`),
+    apiClient.get<ApiResponse<any>>(`/inventory/batches/${id}`),
 
   getDistribution: (id: string) =>
     apiClient.get<ApiResponse<BatchDistribution[]>>(`/inventory/batches/${id}/distribution`),
 
   getItemBatches: (itemId: string) =>
-    apiClient.get<ApiResponse<StockBatch[]>>(`/inventory/batches/item/${itemId}`),
+    apiClient.get<ApiResponse<StockBatch[]>>(`/inventory/batches/by-item/${itemId}`),
 
   getExpiringSoon: (days?: number) =>
-    apiClient.get<ApiResponse<StockBatch[]>>('/inventory/batches/expiring-soon', days ? { days } : undefined),
+    apiClient.get<PaginatedResponse<StockBatch>>('/inventory/batches/expiring', days ? { days } : undefined),
 
   serialSearch: (params: { serial_number: string; item_id?: string }) =>
     apiClient.get<ApiResponse<SerialTraceEntry[]>>('/inventory/serial-search', params),
+
+  listSerials: (params?: { page?: number; limit?: number; search?: string; item_id?: string; warehouse_id?: string }) =>
+    apiClient.get<PaginatedResponse<SerialNumberEntry>>('/inventory/serial-numbers', params),
 };
