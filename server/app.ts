@@ -69,8 +69,18 @@ export async function buildServer() {
   });
 
   // Plugins
-  await server.register(cors, { origin: true, credentials: true });
-  await server.register(helmet, { contentSecurityPolicy: false });
+  await server.register(cors, {
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+});
+  await server.register(helmet, {
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: false,
+  crossOriginEmbedderPolicy: false,
+});
   await server.register(sensible);
 
   // Initialize database
