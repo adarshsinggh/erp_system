@@ -145,20 +145,30 @@ class ApprovalMatrixService extends BaseService {
   }
 
   /**
-   * List rules with filters
+   * List rules with filters — joins roles table for approver_role_name
    */
   async listRules(options: ListOptions & { document_type?: string }) {
-    const { document_type, ...listOpts } = options;
-    const filters: Record<string, any> = {};
-    if (document_type) filters.document_type = document_type;
+    const { companyId, document_type, page = 1, limit = 50, search, sortBy, sortOrder } = options;
+    const offset = (page - 1) * limit;
 
-    return this.list({
-      ...listOpts,
-      filters,
-      searchFields: ['document_type'],
-      sortBy: options.sortBy || 'document_type',
-      sortOrder: options.sortOrder || 'asc',
-    });
+    let query = this.db('approval_matrix as am')
+      .leftJoin('roles as r', 'am.approver_role_id', 'r.id')
+      .where('am.company_id', companyId)
+      .where('am.is_deleted', false);
+
+    if (document_type) query = query.where('am.document_type', document_type);
+    if (search) query = query.where('am.document_type', 'ilike', `%${search}%`);
+
+    const countResult = await query.clone().count('am.id as total').first();
+    const total = parseInt(String(countResult?.total || '0'), 10);
+
+    const data = await query.clone()
+      .select('am.*', 'r.name as approver_role_name')
+      .orderBy(sortBy ? `am.${sortBy}` : 'am.document_type', sortOrder || 'asc')
+      .limit(limit)
+      .offset(offset);
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   /**

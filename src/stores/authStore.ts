@@ -50,6 +50,14 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Clear stale auth if token is missing
+        if (state && state.isAuthenticated && !state.token) {
+          state.token = null;
+          state.user = null;
+          state.isAuthenticated = false;
+        }
+      },
     }
   )
 );

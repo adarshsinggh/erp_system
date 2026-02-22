@@ -249,14 +249,18 @@ export async function auditComplianceRoutes(server: FastifyInstance) {
     } catch (e: any) { return reply.code(500).send({ success: false, error: e.message }); }
   });
 
-  server.get('/backups', { preHandler: [authenticate] }, async (request) => {
-    const { status, backup_type, page, limit } = request.query as any;
-    const result = await backupService.listBackups(request.user!.companyId, {
-      status, backup_type,
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
-    });
-    return { success: true, ...result };
+  server.get('/backups', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const { status, backup_type, page, limit } = request.query as any;
+      const result = await backupService.listBackups(request.user!.companyId, {
+        status, backup_type,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 20,
+      });
+      return { success: true, ...result };
+    } catch (e: any) {
+      return reply.code(500).send({ success: false, error: e.message });
+    }
   });
 
   server.get('/backups/:id/verify', { preHandler: [authenticate] }, async (request, reply) => {

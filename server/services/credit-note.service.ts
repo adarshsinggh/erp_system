@@ -559,6 +559,10 @@ class CreditNoteService extends BaseService {
       for (const cn of data) {
         (cn as any).customer = customerMap.get(cn.customer_id);
         (cn as any).invoice = cn.invoice_id ? invoiceMap.get(cn.invoice_id) : null;
+        // Map grand_total to total_amount for frontend compatibility
+        if ((cn as any).total_amount === undefined && (cn as any).grand_total !== undefined) {
+          (cn as any).total_amount = (cn as any).grand_total;
+        }
       }
     }
 

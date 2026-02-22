@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { dashboardApi, DashboardData } from '../../api/modules/dashboard.api';
 import { AmountDisplay } from '../../components/shared/AmountDisplay';
-import { StatusBadge } from '../../components/shared/StatusBadge';
 import { formatRelativeDate } from '../../lib/formatters';
 
 export function DashboardPage() {
@@ -37,6 +36,10 @@ export function DashboardPage() {
     { label: 'Pending Approvals', path: '/approvals', color: 'bg-amber-500' },
   ];
 
+  const kpis = data?.kpis as Record<string, any> | undefined;
+  const pendingApprovalCount = (data as any)?.pending_approval_count;
+  const revenueTrend = (data as any)?.revenue_trend as { month: string; revenue: string | number }[] | undefined;
+
   return (
     <div className="space-y-6">
       {/* Welcome */}
@@ -52,7 +55,7 @@ export function DashboardPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => (
+          Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
               <div className="skeleton h-3 w-24 rounded mb-3" />
               <div className="skeleton h-6 w-32 rounded mb-2" />
@@ -61,13 +64,25 @@ export function DashboardPage() {
           ))
         ) : (
           <>
-            <KPICard label="Revenue (This Month)" value={data?.kpis?.revenue_this_month} prefix="₹" />
-            <KPICard label="Outstanding Receivables" value={data?.kpis?.outstanding_receivables} prefix="₹" warning />
-            <KPICard label="Inventory Value" value={data?.kpis?.total_inventory_value} prefix="₹" />
-            <KPICard label="Low Stock Items" value={data?.kpis?.low_stock_items} />
+            <KPICard label="Invoiced Revenue (Month)" value={kpis?.revenue_this_month} prefix="₹" />
+            <KPICard label="Open Orders Value" value={kpis?.open_orders_value} prefix="₹" />
+            <KPICard label="Outstanding Receivables" value={kpis?.outstanding_receivables} prefix="₹" warning />
+            <KPICard label="Outstanding Payables" value={kpis?.outstanding_payables} prefix="₹" warning />
+            <KPICard label="Inventory Value" value={kpis?.total_inventory_value} prefix="₹" />
+            <KPICard label="Low Stock Items" value={kpis?.low_stock_items} />
+            <KPICard label="Pending Approvals" value={pendingApprovalCount} />
+            <KPICard label="Notifications" value={(data as any)?.unread_notifications} />
           </>
         )}
       </div>
+
+      {/* Revenue Trend Chart */}
+      {!loading && revenueTrend && revenueTrend.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Revenue Trend (Last 6 Months)</h2>
+          <SimpleBarChart data={revenueTrend} />
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div>
@@ -76,10 +91,11 @@ export function DashboardPage() {
           {quickActions.map((action) => (
             <button
               key={action.path}
+              type="button"
               onClick={() => navigate(action.path)}
-              className="flex flex-col items-center gap-2 p-4 bg-white border border-gray-200 rounded-xl hover:border-brand-300 hover:shadow-sm transition-all group"
+              className="flex flex-col items-center gap-2 p-4 bg-white border border-gray-200 rounded-xl hover:border-brand-300 hover:shadow-sm transition-colors cursor-pointer"
             >
-              <div className={`w-10 h-10 ${action.color} rounded-lg flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform`}>
+              <div className={`w-10 h-10 ${action.color} rounded-lg flex items-center justify-center shadow-sm`}>
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
@@ -188,6 +204,46 @@ function KPICard({ label, value, prefix, trend, warning }: {
           <span className="text-xs font-medium text-emerald-600 mb-1">{trend}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Simple Bar Chart (CSS-only, no external dependency) ──────────
+function SimpleBarChart({ data }: { data: { month: string; revenue: string | number }[] }) {
+  const values = data.map((d) => parseFloat(String(d.revenue)) || 0);
+  const maxVal = Math.max(...values, 1);
+
+  const formatMonth = (m: string) => {
+    const [year, month] = m.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[parseInt(month, 10) - 1]} ${year.slice(2)}`;
+  };
+
+  const formatAmount = (n: number) => {
+    if (n >= 10000000) return `${(n / 10000000).toFixed(1)}Cr`;
+    if (n >= 100000) return `${(n / 100000).toFixed(1)}L`;
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+    return n.toFixed(0);
+  };
+
+  return (
+    <div className="flex items-end gap-3 h-40">
+      {data.map((d, i) => {
+        const val = values[i];
+        const pct = Math.max((val / maxVal) * 100, 2);
+        return (
+          <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
+            <span className="text-2xs text-gray-500 font-medium">{val > 0 ? `₹${formatAmount(val)}` : ''}</span>
+            <div className="w-full flex justify-center" style={{ height: '120px' }}>
+              <div
+                className="w-8 bg-brand-500 rounded-t-md transition-all"
+                style={{ height: `${pct}%`, minHeight: '2px' }}
+              />
+            </div>
+            <span className="text-2xs text-gray-400">{formatMonth(d.month)}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

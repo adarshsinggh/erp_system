@@ -237,6 +237,15 @@ class DashboardService extends BaseService {
       .whereRaw('ss.available_quantity < i.min_stock_threshold')
       .count('ss.id as cnt').first();
 
+    // Open sales orders value (pipeline visibility when no invoices yet)
+    const openOrders = await this.db('sales_orders')
+      .where({ company_id: companyId, is_deleted: false })
+      .whereIn('status', ['confirmed', 'partial'])
+      .select(
+        this.db.raw('COALESCE(SUM(grand_total), 0) as total'),
+        this.db.raw('COUNT(id) as count')
+      ).first();
+
     // Revenue trend (last 6 months)
     const revenueTrend = await this.db('sales_invoices')
       .where({ company_id: companyId, is_deleted: false })
@@ -258,6 +267,8 @@ class DashboardService extends BaseService {
         outstanding_payables: parseFloat(String(payables?.total || '0')),
         total_inventory_value: parseFloat(String(inventory?.total || '0')),
         low_stock_items: parseInt(String(lowStock?.cnt || '0'), 10),
+        open_orders_value: parseFloat(String(openOrders?.total || '0')),
+        open_orders_count: parseInt(String(openOrders?.count || '0'), 10),
       },
       revenue_trend: revenueTrend,
       quick_actions: [

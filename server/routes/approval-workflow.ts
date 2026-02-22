@@ -23,8 +23,22 @@
 import { FastifyInstance } from 'fastify';
 import { authenticate } from '../plugins/auth.plugin';
 import { approvalMatrixService, approvalEngineService } from '../services/approval-workflow.service';
+import { getDb } from '../database/connection';
 
 export async function approvalWorkflowRoutes(server: FastifyInstance) {
+
+  // ═══════════════════════════════════════════════════════════
+  // ROLES — Needed by approval matrix UI for role selection
+  // ═══════════════════════════════════════════════════════════
+
+  server.get('/roles', { preHandler: [authenticate] }, async (request) => {
+    const db = getDb();
+    const roles = await db('roles')
+      .where({ company_id: request.user!.companyId, is_deleted: false })
+      .select('id', 'name', 'description', 'is_system_role')
+      .orderBy('name', 'asc');
+    return { success: true, data: roles };
+  });
 
   // ═══════════════════════════════════════════════════════════
   // APPROVAL MATRIX — Configuration CRUD

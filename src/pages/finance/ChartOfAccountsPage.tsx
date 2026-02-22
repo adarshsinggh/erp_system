@@ -18,6 +18,40 @@ const ACCOUNT_TYPE_OPTIONS = [
   { value: 'expense', label: 'Expense' },
 ];
 
+const ACCOUNT_GROUP_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  asset: [
+    { value: 'current_asset', label: 'Current Asset' },
+    { value: 'fixed_asset', label: 'Fixed Asset' },
+    { value: 'bank', label: 'Bank' },
+    { value: 'cash', label: 'Cash' },
+    { value: 'receivable', label: 'Receivable' },
+    { value: 'inventory', label: 'Inventory' },
+    { value: 'duty_tax', label: 'Duty & Tax' },
+    { value: 'other', label: 'Other' },
+  ],
+  liability: [
+    { value: 'payable', label: 'Payable' },
+    { value: 'loan', label: 'Loan' },
+    { value: 'duty_tax', label: 'Duty & Tax' },
+    { value: 'other', label: 'Other' },
+  ],
+  equity: [
+    { value: 'capital', label: 'Capital' },
+    { value: 'reserve', label: 'Reserve' },
+    { value: 'other', label: 'Other' },
+  ],
+  revenue: [
+    { value: 'income', label: 'Income' },
+    { value: 'other', label: 'Other' },
+  ],
+  expense: [
+    { value: 'cogs', label: 'Cost of Goods Sold' },
+    { value: 'direct_expense', label: 'Direct Expense' },
+    { value: 'indirect_expense', label: 'Indirect Expense' },
+    { value: 'other', label: 'Other' },
+  ],
+};
+
 interface TreeNode extends ChartAccount {
   children: TreeNode[];
 }
@@ -231,6 +265,7 @@ export function ChartOfAccountsPage() {
   async function handleSave() {
     if (!validate()) return;
     setSaving(true);
+    setErrors((prev) => ({ ...prev, _form: '' }));
     try {
       const payload = {
         account_code: form.account_code.trim(),
@@ -253,7 +288,9 @@ export function ChartOfAccountsPage() {
       closeModal();
       loadTree();
     } catch (err: any) {
-      toast.error(err.message);
+      const msg = err.message || 'Failed to save account';
+      setErrors((prev) => ({ ...prev, _form: msg }));
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -515,7 +552,7 @@ export function ChartOfAccountsPage() {
               <FormField label="Account Type" required error={errors.account_type}>
                 <Select
                   value={form.account_type}
-                  onChange={(e) => { updateField('account_type', e.target.value); updateField('parent_id', ''); }}
+                  onChange={(e) => { updateField('account_type', e.target.value); updateField('parent_id', ''); updateField('account_group', ''); }}
                   options={ACCOUNT_TYPE_OPTIONS}
                   placeholder="Select type"
                   error={!!errors.account_type}
@@ -530,11 +567,13 @@ export function ChartOfAccountsPage() {
                 />
               </FormField>
               <FormField label="Account Group" required error={errors.account_group}>
-                <Input
+                <Select
                   value={form.account_group}
                   onChange={(e) => updateField('account_group', e.target.value)}
+                  options={form.account_type ? (ACCOUNT_GROUP_OPTIONS[form.account_type] || []) : []}
+                  placeholder={form.account_type ? 'Select group' : 'Select type first'}
                   error={!!errors.account_group}
-                  placeholder="e.g. Current Assets"
+                  disabled={!form.account_type}
                 />
               </FormField>
               <FormField label="Parent Account">
@@ -589,6 +628,12 @@ export function ChartOfAccountsPage() {
                 </label>
               </div>
             </div>
+
+            {errors._form && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {errors._form}
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 mt-6">
               <button

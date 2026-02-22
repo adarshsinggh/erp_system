@@ -18,6 +18,12 @@ interface PageHeaderProps {
   children?: React.ReactNode;
 }
 
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
+function formatShortcut(shortcut: string): string {
+  if (!isMac) return shortcut;
+  return shortcut.replace(/Ctrl\+/gi, '\u2318');
+}
+
 const variantClasses: Record<string, string> = {
   primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
   secondary: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50',
@@ -55,7 +61,7 @@ export function PageHeader({ title, subtitle, actions, onBack, children }: PageH
           >
             {action.icon}
             {action.label}
-            {action.shortcut && <kbd className="ml-1 hidden sm:inline">{action.shortcut}</kbd>}
+            {action.shortcut && <kbd className="ml-1 hidden sm:inline">{formatShortcut(action.shortcut)}</kbd>}
           </button>
         ))}
       </div>

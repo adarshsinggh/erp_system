@@ -1,20 +1,63 @@
 // src/config/routes.tsx
 import React, { Suspense, lazy } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
 import { useAuthStore } from '../stores/authStore';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const { isAuthenticated, token } = useAuthStore();
+  if (!isAuthenticated || !token) return <Navigate to="/login" replace />;
   return <>{children}</>;
+}
+
+// Retry wrapper for lazy imports — handles Vite chunk fetch failures
+function lazyRetry(factory: () => Promise<any>, retries = 2): React.LazyExoticComponent<React.ComponentType> {
+  return lazy(() =>
+    factory().catch((err: any) => {
+      if (retries > 0) {
+        return new Promise<any>((resolve) => setTimeout(resolve, 500)).then(() => lazyRetry(factory, retries - 1) as any);
+      }
+      // Final failure — force reload to get fresh chunks
+      if (!sessionStorage.getItem('chunk_reload')) {
+        sessionStorage.setItem('chunk_reload', '1');
+        window.location.reload();
+      }
+      throw err;
+    })
+  );
+}
+
+class LazyErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[40vh] text-center px-4">
+          <p className="text-sm text-gray-600 mb-4">Something went wrong loading this page.</p>
+          <button
+            onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
+            className="px-4 py-2 text-sm text-white bg-brand-600 rounded-lg hover:bg-brand-700"
+          >
+            Reload Page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 function LazyPage({ component: Component }: { component: React.LazyExoticComponent<React.ComponentType> }) {
   return (
-    <Suspense fallback={<PageSkeleton />}>
-      <Component />
-    </Suspense>
+    <LazyErrorBoundary>
+      <Suspense fallback={<PageSkeleton />}>
+        <Component />
+      </Suspense>
+    </LazyErrorBoundary>
   );
 }
 
@@ -36,104 +79,110 @@ function PageSkeleton() {
   );
 }
 
-// ─── Lazy Imports ───────────────────────────────────────────────
-const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
-const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+// ─── Lazy Imports (all use lazyRetry for chunk-failure resilience) ─
+const LoginPage = lazyRetry(() => import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
+const DashboardPage = lazyRetry(() => import('../pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const NotFoundPage = lazyRetry(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 // Settings (Step 2A)
-const CompanyProfile = lazy(() => import('../pages/settings/CompanyProfile').then((m) => ({ default: m.CompanyProfile })));
-const BranchesList = lazy(() => import('../pages/settings/BranchesList').then((m) => ({ default: m.BranchesList })));
-const BranchForm = lazy(() => import('../pages/settings/BranchForm').then((m) => ({ default: m.BranchForm })));
-const WarehousesList = lazy(() => import('../pages/settings/WarehousesList').then((m) => ({ default: m.WarehousesList })));
-const WarehouseForm = lazy(() => import('../pages/settings/WarehouseForm').then((m) => ({ default: m.WarehouseForm })));
-const UsersList = lazy(() => import('../pages/settings/UsersList').then((m) => ({ default: m.UsersList })));
-const UserForm = lazy(() => import('../pages/settings/UserForm').then((m) => ({ default: m.UserForm })));
-const RolesPermissions = lazy(() => import('../pages/settings/RolesPermissions').then((m) => ({ default: m.RolesPermissions })));
-const TaxMastersList = lazy(() => import('../pages/settings/TaxMastersList').then((m) => ({ default: m.TaxMastersList })));
-const TaxMasterForm = lazy(() => import('../pages/settings/TaxMasterForm').then((m) => ({ default: m.TaxMasterForm })));
-const UomManager = lazy(() => import('../pages/settings/UomManager').then((m) => ({ default: m.UomManager })));
-const CategoryTree = lazy(() => import('../pages/settings/CategoryTree').then((m) => ({ default: m.CategoryTree })));
-const DocumentSequences = lazy(() => import('../pages/settings/DocumentSequences').then((m) => ({ default: m.DocumentSequences })));
+const CompanyProfile = lazyRetry(() => import('../pages/settings/CompanyProfile').then((m) => ({ default: m.CompanyProfile })));
+const BranchesList = lazyRetry(() => import('../pages/settings/BranchesList').then((m) => ({ default: m.BranchesList })));
+const BranchForm = lazyRetry(() => import('../pages/settings/BranchForm').then((m) => ({ default: m.BranchForm })));
+const WarehousesList = lazyRetry(() => import('../pages/settings/WarehousesList').then((m) => ({ default: m.WarehousesList })));
+const WarehouseForm = lazyRetry(() => import('../pages/settings/WarehouseForm').then((m) => ({ default: m.WarehouseForm })));
+const UsersList = lazyRetry(() => import('../pages/settings/UsersList').then((m) => ({ default: m.UsersList })));
+const UserForm = lazyRetry(() => import('../pages/settings/UserForm').then((m) => ({ default: m.UserForm })));
+const RolesPermissions = lazyRetry(() => import('../pages/settings/RolesPermissions').then((m) => ({ default: m.RolesPermissions })));
+const TaxMastersList = lazyRetry(() => import('../pages/settings/TaxMastersList').then((m) => ({ default: m.TaxMastersList })));
+const TaxMasterForm = lazyRetry(() => import('../pages/settings/TaxMasterForm').then((m) => ({ default: m.TaxMasterForm })));
+const UomManager = lazyRetry(() => import('../pages/settings/UomManager').then((m) => ({ default: m.UomManager })));
+const CategoryTree = lazyRetry(() => import('../pages/settings/CategoryTree').then((m) => ({ default: m.CategoryTree })));
+const DocumentSequences = lazyRetry(() => import('../pages/settings/DocumentSequences').then((m) => ({ default: m.DocumentSequences })));
 
 // Masters (Step 2B)
-const CustomersList = lazy(() => import('../pages/masters/CustomersList').then((m) => ({ default: m.CustomersList })));
-const CustomerForm = lazy(() => import('../pages/masters/CustomerForm').then((m) => ({ default: m.CustomerForm })));
-const VendorsList = lazy(() => import('../pages/masters/VendorsList').then((m) => ({ default: m.VendorsList })));
-const VendorForm = lazy(() => import('../pages/masters/VendorForm').then((m) => ({ default: m.VendorForm })));
-const ItemsList = lazy(() => import('../pages/masters/ItemsList').then((m) => ({ default: m.ItemsList })));
-const ItemForm = lazy(() => import('../pages/masters/ItemForm').then((m) => ({ default: m.ItemForm })));
-const ProductsList = lazy(() => import('../pages/masters/ProductsList').then((m) => ({ default: m.ProductsList })));
-const ProductForm = lazy(() => import('../pages/masters/ProductForm').then((m) => ({ default: m.ProductForm })));
-const BomsList = lazy(() => import('../pages/masters/BomsList').then((m) => ({ default: m.BomsList })));
-const BomBuilder = lazy(() => import('../pages/masters/BomBuilder').then((m) => ({ default: m.BomBuilder })));
+const CustomersList = lazyRetry(() => import('../pages/masters/CustomersList').then((m) => ({ default: m.CustomersList })));
+const CustomerForm = lazyRetry(() => import('../pages/masters/CustomerForm').then((m) => ({ default: m.CustomerForm })));
+const VendorsList = lazyRetry(() => import('../pages/masters/VendorsList').then((m) => ({ default: m.VendorsList })));
+const VendorForm = lazyRetry(() => import('../pages/masters/VendorForm').then((m) => ({ default: m.VendorForm })));
+const ItemsList = lazyRetry(() => import('../pages/masters/ItemsList').then((m) => ({ default: m.ItemsList })));
+const ItemForm = lazyRetry(() => import('../pages/masters/ItemForm').then((m) => ({ default: m.ItemForm })));
+const ProductsList = lazyRetry(() => import('../pages/masters/ProductsList').then((m) => ({ default: m.ProductsList })));
+const ProductForm = lazyRetry(() => import('../pages/masters/ProductForm').then((m) => ({ default: m.ProductForm })));
+const BomsList = lazyRetry(() => import('../pages/masters/BomsList').then((m) => ({ default: m.BomsList })));
+const BomBuilder = lazyRetry(() => import('../pages/masters/BomBuilder').then((m) => ({ default: m.BomBuilder })));
 
 // Sales (Step 2C)
-const QuotationsList = lazy(() => import('../pages/sales/QuotationsList').then((m) => ({ default: m.QuotationsList })));
-const QuotationForm = lazy(() => import('../pages/sales/QuotationForm').then((m) => ({ default: m.QuotationForm })));
-const SalesOrdersList = lazy(() => import('../pages/sales/SalesOrdersList').then((m) => ({ default: m.SalesOrdersList })));
-const SalesOrderForm = lazy(() => import('../pages/sales/SalesOrderForm').then((m) => ({ default: m.SalesOrderForm })));
-const DeliveryChallansList = lazy(() => import('../pages/sales/DeliveryChallansList').then((m) => ({ default: m.DeliveryChallansList })));
-const DeliveryChallanForm = lazy(() => import('../pages/sales/DeliveryChallanForm').then((m) => ({ default: m.DeliveryChallanForm })));
-const SalesInvoicesList = lazy(() => import('../pages/sales/SalesInvoicesList').then((m) => ({ default: m.SalesInvoicesList })));
-const SalesInvoiceForm = lazy(() => import('../pages/sales/SalesInvoiceForm').then((m) => ({ default: m.SalesInvoiceForm })));
-const CreditNotesList = lazy(() => import('../pages/sales/CreditNotesList').then((m) => ({ default: m.CreditNotesList })));
-const CreditNoteForm = lazy(() => import('../pages/sales/CreditNoteForm').then((m) => ({ default: m.CreditNoteForm })));
-const PaymentReceiptsList = lazy(() => import('../pages/sales/PaymentReceiptsList').then((m) => ({ default: m.PaymentReceiptsList })));
-const PaymentReceiptForm = lazy(() => import('../pages/sales/PaymentReceiptForm').then((m) => ({ default: m.PaymentReceiptForm })));
+const QuotationsList = lazyRetry(() => import('../pages/sales/QuotationsList').then((m) => ({ default: m.QuotationsList })));
+const QuotationForm = lazyRetry(() => import('../pages/sales/QuotationForm').then((m) => ({ default: m.QuotationForm })));
+const SalesOrdersList = lazyRetry(() => import('../pages/sales/SalesOrdersList').then((m) => ({ default: m.SalesOrdersList })));
+const SalesOrderForm = lazyRetry(() => import('../pages/sales/SalesOrderForm').then((m) => ({ default: m.SalesOrderForm })));
+const DeliveryChallansList = lazyRetry(() => import('../pages/sales/DeliveryChallansList').then((m) => ({ default: m.DeliveryChallansList })));
+const DeliveryChallanForm = lazyRetry(() => import('../pages/sales/DeliveryChallanForm').then((m) => ({ default: m.DeliveryChallanForm })));
+const SalesInvoicesList = lazyRetry(() => import('../pages/sales/SalesInvoicesList').then((m) => ({ default: m.SalesInvoicesList })));
+const SalesInvoiceForm = lazyRetry(() => import('../pages/sales/SalesInvoiceForm').then((m) => ({ default: m.SalesInvoiceForm })));
+const CreditNotesList = lazyRetry(() => import('../pages/sales/CreditNotesList').then((m) => ({ default: m.CreditNotesList })));
+const CreditNoteForm = lazyRetry(() => import('../pages/sales/CreditNoteForm').then((m) => ({ default: m.CreditNoteForm })));
+const PaymentReceiptsList = lazyRetry(() => import('../pages/sales/PaymentReceiptsList').then((m) => ({ default: m.PaymentReceiptsList })));
+const PaymentReceiptForm = lazyRetry(() => import('../pages/sales/PaymentReceiptForm').then((m) => ({ default: m.PaymentReceiptForm })));
 
 // Purchase (Step 2D)
-const PurchaseRequisitionsList = lazy(() => import('../pages/purchase/PurchaseRequisitionsList').then((m) => ({ default: m.PurchaseRequisitionsList })));
-const PurchaseRequisitionForm = lazy(() => import('../pages/purchase/PurchaseRequisitionForm').then((m) => ({ default: m.PurchaseRequisitionForm })));
-const PurchaseOrdersList = lazy(() => import('../pages/purchase/PurchaseOrdersList').then((m) => ({ default: m.PurchaseOrdersList })));
-const PurchaseOrderForm = lazy(() => import('../pages/purchase/PurchaseOrderForm').then((m) => ({ default: m.PurchaseOrderForm })));
-const GoodsReceiptNotesList = lazy(() => import('../pages/purchase/GoodsReceiptNotesList').then((m) => ({ default: m.GoodsReceiptNotesList })));
-const GoodsReceiptNoteForm = lazy(() => import('../pages/purchase/GoodsReceiptNoteForm').then((m) => ({ default: m.GoodsReceiptNoteForm })));
-const VendorBillsList = lazy(() => import('../pages/purchase/VendorBillsList').then((m) => ({ default: m.VendorBillsList })));
-const VendorBillForm = lazy(() => import('../pages/purchase/VendorBillForm').then((m) => ({ default: m.VendorBillForm })));
-const DebitNotesList = lazy(() => import('../pages/purchase/DebitNotesList').then((m) => ({ default: m.DebitNotesList })));
-const DebitNoteForm = lazy(() => import('../pages/purchase/DebitNoteForm').then((m) => ({ default: m.DebitNoteForm })));
-const VendorPaymentsList = lazy(() => import('../pages/purchase/VendorPaymentsList').then((m) => ({ default: m.VendorPaymentsList })));
-const VendorPaymentForm = lazy(() => import('../pages/purchase/VendorPaymentForm').then((m) => ({ default: m.VendorPaymentForm })));
+const PurchaseRequisitionsList = lazyRetry(() => import('../pages/purchase/PurchaseRequisitionsList').then((m) => ({ default: m.PurchaseRequisitionsList })));
+const PurchaseRequisitionForm = lazyRetry(() => import('../pages/purchase/PurchaseRequisitionForm').then((m) => ({ default: m.PurchaseRequisitionForm })));
+const PurchaseOrdersList = lazyRetry(() => import('../pages/purchase/PurchaseOrdersList').then((m) => ({ default: m.PurchaseOrdersList })));
+const PurchaseOrderForm = lazyRetry(() => import('../pages/purchase/PurchaseOrderForm').then((m) => ({ default: m.PurchaseOrderForm })));
+const GoodsReceiptNotesList = lazyRetry(() => import('../pages/purchase/GoodsReceiptNotesList').then((m) => ({ default: m.GoodsReceiptNotesList })));
+const GoodsReceiptNoteForm = lazyRetry(() => import('../pages/purchase/GoodsReceiptNoteForm').then((m) => ({ default: m.GoodsReceiptNoteForm })));
+const VendorBillsList = lazyRetry(() => import('../pages/purchase/VendorBillsList').then((m) => ({ default: m.VendorBillsList })));
+const VendorBillForm = lazyRetry(() => import('../pages/purchase/VendorBillForm').then((m) => ({ default: m.VendorBillForm })));
+const DebitNotesList = lazyRetry(() => import('../pages/purchase/DebitNotesList').then((m) => ({ default: m.DebitNotesList })));
+const DebitNoteForm = lazyRetry(() => import('../pages/purchase/DebitNoteForm').then((m) => ({ default: m.DebitNoteForm })));
+const VendorPaymentsList = lazyRetry(() => import('../pages/purchase/VendorPaymentsList').then((m) => ({ default: m.VendorPaymentsList })));
+const VendorPaymentForm = lazyRetry(() => import('../pages/purchase/VendorPaymentForm').then((m) => ({ default: m.VendorPaymentForm })));
 
 // Inventory (Step 2E)
-const StockSummaryPage = lazy(() => import('../pages/inventory/StockSummaryPage').then((m) => ({ default: m.StockSummaryPage })));
-const StockLedgerPage = lazy(() => import('../pages/inventory/StockLedgerPage').then((m) => ({ default: m.StockLedgerPage })));
-const StockTransfersList = lazy(() => import('../pages/inventory/StockTransfersList').then((m) => ({ default: m.StockTransfersList })));
-const StockTransferForm = lazy(() => import('../pages/inventory/StockTransferForm').then((m) => ({ default: m.StockTransferForm })));
-const StockAdjustmentsList = lazy(() => import('../pages/inventory/StockAdjustmentsList').then((m) => ({ default: m.StockAdjustmentsList })));
-const StockAdjustmentForm = lazy(() => import('../pages/inventory/StockAdjustmentForm').then((m) => ({ default: m.StockAdjustmentForm })));
-const BatchSerialPage = lazy(() => import('../pages/inventory/BatchSerialPage').then((m) => ({ default: m.BatchSerialPage })));
+const StockSummaryPage = lazyRetry(() => import('../pages/inventory/StockSummaryPage').then((m) => ({ default: m.StockSummaryPage })));
+const StockLedgerPage = lazyRetry(() => import('../pages/inventory/StockLedgerPage').then((m) => ({ default: m.StockLedgerPage })));
+const StockTransfersList = lazyRetry(() => import('../pages/inventory/StockTransfersList').then((m) => ({ default: m.StockTransfersList })));
+const StockTransferForm = lazyRetry(() => import('../pages/inventory/StockTransferForm').then((m) => ({ default: m.StockTransferForm })));
+const StockAdjustmentsList = lazyRetry(() => import('../pages/inventory/StockAdjustmentsList').then((m) => ({ default: m.StockAdjustmentsList })));
+const StockAdjustmentForm = lazyRetry(() => import('../pages/inventory/StockAdjustmentForm').then((m) => ({ default: m.StockAdjustmentForm })));
+const BatchSerialPage = lazyRetry(() => import('../pages/inventory/BatchSerialPage').then((m) => ({ default: m.BatchSerialPage })));
 
 // Manufacturing (Step 2F)
-const WorkOrdersList = lazy(() => import('../pages/manufacturing/WorkOrdersList').then((m) => ({ default: m.WorkOrdersList })));
-const WorkOrderForm = lazy(() => import('../pages/manufacturing/WorkOrderForm').then((m) => ({ default: m.WorkOrderForm })));
-const ProductionEntriesList = lazy(() => import('../pages/manufacturing/ProductionEntriesList').then((m) => ({ default: m.ProductionEntriesList })));
-const ProductionEntryForm = lazy(() => import('../pages/manufacturing/ProductionEntryForm').then((m) => ({ default: m.ProductionEntryForm })));
-const ScrapEntriesList = lazy(() => import('../pages/manufacturing/ScrapEntriesList').then((m) => ({ default: m.ScrapEntriesList })));
-const ScrapEntryForm = lazy(() => import('../pages/manufacturing/ScrapEntryForm').then((m) => ({ default: m.ScrapEntryForm })));
+const WorkOrdersList = lazyRetry(() => import('../pages/manufacturing/WorkOrdersList').then((m) => ({ default: m.WorkOrdersList })));
+const WorkOrderForm = lazyRetry(() => import('../pages/manufacturing/WorkOrderForm').then((m) => ({ default: m.WorkOrderForm })));
+const ProductionEntriesList = lazyRetry(() => import('../pages/manufacturing/ProductionEntriesList').then((m) => ({ default: m.ProductionEntriesList })));
+const ProductionEntryForm = lazyRetry(() => import('../pages/manufacturing/ProductionEntryForm').then((m) => ({ default: m.ProductionEntryForm })));
+const ScrapEntriesList = lazyRetry(() => import('../pages/manufacturing/ScrapEntriesList').then((m) => ({ default: m.ScrapEntriesList })));
+const ScrapEntryForm = lazyRetry(() => import('../pages/manufacturing/ScrapEntryForm').then((m) => ({ default: m.ScrapEntryForm })));
 
 // Finance (Step 2G)
-const ChartOfAccountsPage = lazy(() => import('../pages/finance/ChartOfAccountsPage').then((m) => ({ default: m.ChartOfAccountsPage })));
-const LedgerPage = lazy(() => import('../pages/finance/LedgerPage').then((m) => ({ default: m.LedgerPage })));
-const BankAccountsList = lazy(() => import('../pages/finance/BankAccountsList').then((m) => ({ default: m.BankAccountsList })));
-const BankAccountForm = lazy(() => import('../pages/finance/BankAccountForm').then((m) => ({ default: m.BankAccountForm })));
-const ReconciliationPage = lazy(() => import('../pages/finance/ReconciliationPage').then((m) => ({ default: m.ReconciliationPage })));
+const ChartOfAccountsPage = lazyRetry(() => import('../pages/finance/ChartOfAccountsPage').then((m) => ({ default: m.ChartOfAccountsPage })));
+const LedgerPage = lazyRetry(() => import('../pages/finance/LedgerPage').then((m) => ({ default: m.LedgerPage })));
+const BankAccountsList = lazyRetry(() => import('../pages/finance/BankAccountsList').then((m) => ({ default: m.BankAccountsList })));
+const BankAccountForm = lazyRetry(() => import('../pages/finance/BankAccountForm').then((m) => ({ default: m.BankAccountForm })));
+const ReconciliationPage = lazyRetry(() => import('../pages/finance/ReconciliationPage').then((m) => ({ default: m.ReconciliationPage })));
 
 // Approvals (Step 2H)
-const ApprovalsPage = lazy(() => import('../pages/approvals/ApprovalsPage').then((m) => ({ default: m.ApprovalsPage })));
-const ApprovalMatrixPage = lazy(() => import('../pages/approvals/ApprovalMatrixPage').then((m) => ({ default: m.ApprovalMatrixPage })));
+const ApprovalsPage = lazyRetry(() => import('../pages/approvals/ApprovalsPage').then((m) => ({ default: m.ApprovalsPage })));
+const ApprovalMatrixPage = lazyRetry(() => import('../pages/approvals/ApprovalMatrixPage').then((m) => ({ default: m.ApprovalMatrixPage })));
 
 // Reports (Step 2K)
-const ReportViewerPage = lazy(() => import('../pages/reports/ReportViewerPage').then((m) => ({ default: m.ReportViewerPage })));
-const GSTReportsPage = lazy(() => import('../pages/reports/GSTReportsPage').then((m) => ({ default: m.GSTReportsPage })));
-const InsightsPage = lazy(() => import('../pages/reports/InsightsPage').then((m) => ({ default: m.InsightsPage })));
+const ReportViewerPage = lazyRetry(() => import('../pages/reports/ReportViewerPage').then((m) => ({ default: m.ReportViewerPage })));
+const GSTReportsPage = lazyRetry(() => import('../pages/reports/GSTReportsPage').then((m) => ({ default: m.GSTReportsPage })));
+const InsightsPage = lazyRetry(() => import('../pages/reports/InsightsPage').then((m) => ({ default: m.InsightsPage })));
 
 // System (Step 2J)
-const AlertRulesList = lazy(() => import('../pages/system/AlertRulesList').then((m) => ({ default: m.AlertRulesList })));
-const AlertRuleForm = lazy(() => import('../pages/system/AlertRuleForm').then((m) => ({ default: m.AlertRuleForm })));
-const NotificationsPage = lazy(() => import('../pages/system/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
-const BackupsPage = lazy(() => import('../pages/system/BackupsPage').then((m) => ({ default: m.BackupsPage })));
+const AlertRulesList = lazyRetry(() => import('../pages/system/AlertRulesList').then((m) => ({ default: m.AlertRulesList })));
+const AlertRuleForm = lazyRetry(() => import('../pages/system/AlertRuleForm').then((m) => ({ default: m.AlertRuleForm })));
+const NotificationsPage = lazyRetry(() => import('../pages/system/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
+const BackupsPage = lazyRetry(() => import('../pages/system/BackupsPage').then((m) => ({ default: m.BackupsPage })));
 
+
+function DeliveryChallanRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/sales/challans/${id}`} replace />;
+}
 
 function LogoutRoute() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
@@ -198,7 +247,7 @@ export const router = createBrowserRouter([
       { path: 'sales/challans/new', element: <LazyPage component={DeliveryChallanForm} /> },
       { path: 'sales/challans/:id', element: <LazyPage component={DeliveryChallanForm} /> },
       { path: 'sales/delivery-challans', element: <Navigate to="/sales/challans" replace /> },
-      { path: 'sales/delivery-challans/:id', element: <Navigate to="/sales/challans" replace /> },
+      { path: 'sales/delivery-challans/:id', element: <DeliveryChallanRedirect /> },
       { path: 'sales/invoices', element: <LazyPage component={SalesInvoicesList} /> },
       { path: 'sales/invoices/new', element: <LazyPage component={SalesInvoiceForm} /> },
       { path: 'sales/invoices/:id', element: <LazyPage component={SalesInvoiceForm} /> },
@@ -276,7 +325,7 @@ export const router = createBrowserRouter([
       { path: 'system/backups', element: <LazyPage component={BackupsPage} /> },
 
       // ─── Catch-all ──────────────────────────────────────────
-      { path: '*', element: <Navigate to="/" replace /> },
+      { path: '*', element: <LazyPage component={NotFoundPage} /> },
     ],
   },
 ]);

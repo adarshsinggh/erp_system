@@ -244,16 +244,16 @@ class InsightsService extends BaseService {
         COUNT(DISTINCT po.id) as total_pos,
         COUNT(DISTINCT grn.id) as total_grns,
         ROUND(AVG(
-          CASE WHEN grn.receipt_date IS NOT NULL AND po.expected_delivery_date IS NOT NULL
-          THEN EXTRACT(DAY FROM grn.receipt_date::timestamp - po.expected_delivery_date::timestamp)
+          CASE WHEN grn.grn_date IS NOT NULL AND po.expected_delivery_date IS NOT NULL
+          THEN EXTRACT(DAY FROM grn.grn_date::timestamp - po.expected_delivery_date::timestamp)
           ELSE NULL END
         ), 1) as avg_delivery_variance_days
       FROM vendors v
       LEFT JOIN purchase_orders po ON v.id = po.vendor_id AND po.company_id = ? AND po.is_deleted = FALSE
-      LEFT JOIN goods_receipt_notes grn ON po.id = grn.po_id AND grn.is_deleted = FALSE
+      LEFT JOIN goods_receipt_notes grn ON po.id = grn.purchase_order_id AND grn.is_deleted = FALSE
       WHERE v.company_id = ? AND v.is_deleted = FALSE AND v.status = 'active'
       GROUP BY v.id, v.vendor_code, v.name, v.reliability_score, v.average_lead_days, v.is_preferred, v.payment_terms_days
-      ORDER BY v.reliability_score DESC
+      ORDER BY v.reliability_score DESC NULLS LAST
       LIMIT ?
     `, [companyId, companyId, maxResults]);
 

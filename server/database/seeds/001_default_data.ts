@@ -125,18 +125,18 @@ export async function seed(knex: Knex): Promise<void> {
 
   if (parseInt(String(existingSeq?.count || '0'), 10) === 0 && branch && fy) {
     await knex('document_sequences').insert([
-      { company_id: companyId, branch_id: branch.id, document_type: 'quotation', prefix_pattern: 'QT/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'sales_order', prefix_pattern: 'SO/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'invoice', prefix_pattern: 'INV/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'credit_note', prefix_pattern: 'CN/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'po', prefix_pattern: 'PO/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'grn', prefix_pattern: 'GRN/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'vendor_bill', prefix_pattern: 'VB/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'debit_note', prefix_pattern: 'DN/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'work_order', prefix_pattern: 'WO/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'delivery_challan', prefix_pattern: 'DC/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'payment_receipt', prefix_pattern: 'REC/', pad_length: 5, financial_year_id: fy.id },
-      { company_id: companyId, branch_id: branch.id, document_type: 'payment_made', prefix_pattern: 'PAY/', pad_length: 5, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'quotation', prefix_pattern: 'QTN-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'sales_order', prefix_pattern: 'SO-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'invoice', prefix_pattern: 'INV-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'credit_note', prefix_pattern: 'CN-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'po', prefix_pattern: 'PO-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'grn', prefix_pattern: 'GRN-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'vendor_bill', prefix_pattern: 'VB-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'debit_note', prefix_pattern: 'DN-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'work_order', prefix_pattern: 'WO-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'delivery_challan', prefix_pattern: 'DC-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'payment_receipt', prefix_pattern: 'REC-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'payment_made', prefix_pattern: 'PAY-', pad_length: 4, financial_year_id: fy.id },
     ]);
 
     console.log('[Seed] Document sequences created');

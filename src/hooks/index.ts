@@ -48,10 +48,18 @@ export function usePagination(defaults?: Partial<PaginationState>) {
 type ShortcutMap = Record<string, (e: KeyboardEvent) => void>;
 
 export function useKeyboardShortcuts(shortcuts: ShortcutMap, enabled = true) {
+  // Use ref to avoid effect re-running on every render when shortcuts object is inline
+  const shortcutsRef = useRef(shortcuts);
+  shortcutsRef.current = shortcuts;
+
   useEffect(() => {
     if (!enabled) return;
 
     const handler = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input/textarea/select
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
       // Build key string: ctrl+shift+k
       const parts: string[] = [];
       if (e.ctrlKey || e.metaKey) parts.push('ctrl');
@@ -60,7 +68,7 @@ export function useKeyboardShortcuts(shortcuts: ShortcutMap, enabled = true) {
       parts.push(e.key.toLowerCase());
       const combo = parts.join('+');
 
-      const action = shortcuts[combo];
+      const action = shortcutsRef.current[combo];
       if (action) {
         e.preventDefault();
         e.stopPropagation();
@@ -68,9 +76,9 @@ export function useKeyboardShortcuts(shortcuts: ShortcutMap, enabled = true) {
       }
     };
 
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [shortcuts, enabled]);
+    window.addEventListener('keydown', handler, true); // Use capture phase
+    return () => window.removeEventListener('keydown', handler, true);
+  }, [enabled]);
 }
 
 // ─── useFormDirty ────────────────────────────────────────────────

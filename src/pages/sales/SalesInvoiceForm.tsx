@@ -199,6 +199,8 @@ export function SalesInvoiceForm() {
     if (!form.invoice_date) { toast.error('Please enter invoice date'); return; }
     const validLines = lines.filter((l) => l.product_id && l.quantity > 0);
     if (!validLines.length) { toast.error('Add at least one line item'); return; }
+    const missingUom = validLines.findIndex((l) => !l.uom_id);
+    if (missingUom >= 0) { toast.error(`Line ${missingUom + 1}: UOM is missing. Please re-select the product.`); return; }
     setSaving(true);
     try {
       const payload = {

@@ -250,7 +250,16 @@ export async function financeRoutes(server: FastifyInstance) {
     const pnl = await ledgerService.getProfitAndLoss(request.user!.companyId, {
       from_date: q.from_date, to_date: q.to_date, branch_id: q.branch_id,
     });
-    return { success: true, ...pnl };
+    return {
+      success: true,
+      data: {
+        income: pnl.revenue?.items || [],
+        expenses: pnl.expenses?.items || [],
+        total_income: pnl.revenue?.total || 0,
+        total_expense: pnl.expenses?.total || 0,
+        net_profit: pnl.net_profit || 0,
+      },
+    };
   });
 
   // GET /finance/balance-sheet
@@ -258,7 +267,22 @@ export async function financeRoutes(server: FastifyInstance) {
     const q = request.query as any;
     if (!q.as_of_date) return reply.code(400).send({ success: false, error: 'as_of_date is required' });
     const bs = await ledgerService.getBalanceSheet(request.user!.companyId, q.as_of_date);
-    return { success: true, ...bs };
+    const mapItems = (items: any[]) => items.map((i: any) => ({
+      account_code: i.account_code,
+      account_name: i.account_name,
+      amount: i.balance ?? i.amount ?? 0,
+    }));
+    return {
+      success: true,
+      data: {
+        assets: mapItems(bs.assets?.items || []),
+        liabilities: mapItems(bs.liabilities?.items || []),
+        equity: mapItems(bs.equity?.items || []),
+        total_assets: bs.assets?.total || 0,
+        total_liabilities: bs.liabilities?.total || 0,
+        total_equity: bs.equity?.total || 0,
+      },
+    };
   });
 
   // GET /finance/outstanding-receivables

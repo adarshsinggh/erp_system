@@ -14,6 +14,7 @@ export function BackupsPage() {
   const [data, setData] = useState<BackupRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
@@ -51,6 +52,7 @@ export function BackupsPage() {
 
   async function loadData() {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await systemApi.backups.list({
         status: statusFilter || undefined,
@@ -61,6 +63,7 @@ export function BackupsPage() {
       setData(res.data || []);
       setTotal(res.total);
     } catch (err: any) {
+      setLoadError(err.message || 'Failed to load backups');
       toast.error(err.message);
     } finally {
       setLoading(false);
@@ -234,17 +237,28 @@ export function BackupsPage() {
         />
       </div>
 
-      <DataTable
-        columns={columns}
-        data={data}
-        loading={loading}
-        total={total}
-        page={page}
-        limit={limit}
-        onPageChange={setPage}
-        emptyMessage="No backups yet"
-        emptyAction={{ label: 'Run your first backup', onClick: () => setShowRunDialog(true) }}
-      />
+      {loadError ? (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+          <svg className="w-10 h-10 text-red-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <p className="text-sm font-medium text-red-800 mb-1">Failed to load backups</p>
+          <p className="text-xs text-red-600 mb-4">{loadError}</p>
+          <button onClick={loadData} className="text-sm text-red-700 underline hover:text-red-900">Retry</button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={data}
+          loading={loading}
+          total={total}
+          page={page}
+          limit={limit}
+          onPageChange={setPage}
+          emptyMessage="No backups yet"
+          emptyAction={{ label: 'Run your first backup', onClick: () => setShowRunDialog(true) }}
+        />
+      )}
 
       {/* Run Backup Dialog */}
       {showRunDialog && (

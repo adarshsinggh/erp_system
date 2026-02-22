@@ -263,7 +263,7 @@ class ReportsService extends BaseService {
         'ss.on_order_quantity', 'ss.in_production_quantity', 'ss.free_quantity',
         'ss.valuation_rate', 'ss.total_value',
         'ss.last_purchase_date', 'ss.last_sale_date',
-        this.db.raw("COALESCE(u.symbol, u.code) as uom")
+        this.db.raw("COALESCE(u.code, u.name) as uom")
       )
       .orderByRaw("COALESCE(i.name, p.name)");
   }
@@ -609,7 +609,7 @@ class ReportsService extends BaseService {
 
     let query = this.db('work_order_materials as wom')
       .join('work_orders as wo', 'wom.work_order_id', 'wo.id')
-      .leftJoin('items as i', 'wom.item_id', 'i.id')
+      .leftJoin('items as i', 'wom.component_item_id', 'i.id')
       .where('wo.company_id', companyId)
       .where('wom.is_deleted', false);
 
@@ -672,14 +672,15 @@ class ReportsService extends BaseService {
       .where('p.is_deleted', false)
       .select(
         'p.product_code', 'p.name as product_name',
-        'p.selling_price', 'p.standard_cost',
-        'pc.avg_production_cost',
+        'p.selling_price',
+        this.db.raw('COALESCE(p.standard_cost, 0) as standard_cost'),
+        this.db.raw('COALESCE(pc.avg_production_cost, 0) as avg_production_cost'),
         this.db.raw(`CASE
           WHEN p.selling_price > 0 AND pc.avg_production_cost IS NOT NULL
           THEN ROUND((p.selling_price - pc.avg_production_cost) / p.selling_price * 100, 2)
-          WHEN p.selling_price > 0 AND p.standard_cost > 0
+          WHEN p.selling_price > 0 AND COALESCE(p.standard_cost, 0) > 0
           THEN ROUND((p.selling_price - p.standard_cost) / p.selling_price * 100, 2)
-          ELSE NULL END as profit_margin_pct`)
+          ELSE 0 END as profit_margin_pct`)
       )
       .orderByRaw('profit_margin_pct ASC NULLS LAST');
   }

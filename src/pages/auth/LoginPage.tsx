@@ -14,9 +14,10 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const { token } = useAuthStore();
   useEffect(() => {
-    if (isAuthenticated) navigate('/', { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (isAuthenticated && token) navigate('/', { replace: true });
+  }, [isAuthenticated, token, navigate]);
 
   useEffect(() => {
     loadCompanies();

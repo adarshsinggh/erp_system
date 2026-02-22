@@ -278,10 +278,15 @@ export const settingsApi = {
     return { success: true, data: mockUsers[idx] };
   },
 
-  // ─── Roles & Permissions (PENDING — mock) ───────────────────
+  // ─── Roles & Permissions ───────────────────────────────────
   listRoles: async (): Promise<ApiResponse<Role[]>> => {
-    await delay(400);
-    return { success: true, data: mockRoles };
+    try {
+      return await apiClient.get<ApiResponse<Role[]>>('/roles');
+    } catch {
+      // Fallback to mock data if endpoint is not available
+      await delay(400);
+      return { success: true, data: mockRoles };
+    }
   },
 
   getRole: async (id: string): Promise<ApiResponse<Role>> => {

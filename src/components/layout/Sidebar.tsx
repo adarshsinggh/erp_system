@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '../../stores/uiStore';
 
@@ -134,6 +134,9 @@ export function Sidebar() {
     new Set(NAV_GROUPS.filter((g) => g.items.some((i) => location.pathname.startsWith(i.path))).map((g) => g.label))
   );
 
+  const [flyoutGroup, setFlyoutGroup] = useState<string | null>(null);
+  const flyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const toggleGroup = (label: string) => {
     setExpandedGroups((prev) => {
       const next = new Set(prev);
@@ -144,6 +147,22 @@ export function Sidebar() {
   };
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+
+  // Close flyout when sidebar expands
+  useEffect(() => {
+    if (!sidebarCollapsed) setFlyoutGroup(null);
+  }, [sidebarCollapsed]);
+
+  const handleGroupMouseEnter = (label: string) => {
+    if (!sidebarCollapsed) return;
+    if (flyoutTimer.current) clearTimeout(flyoutTimer.current);
+    setFlyoutGroup(label);
+  };
+
+  const handleGroupMouseLeave = () => {
+    if (!sidebarCollapsed) return;
+    flyoutTimer.current = setTimeout(() => setFlyoutGroup(null), 150);
+  };
 
   return (
     <aside
@@ -184,14 +203,21 @@ export function Sidebar() {
         {NAV_GROUPS.map((group) => {
           const isExpanded = expandedGroups.has(group.label);
           const hasActive = group.items.some((i) => isActive(i.path));
+          const showFlyout = sidebarCollapsed && flyoutGroup === group.label;
 
           return (
-            <div key={group.label}>
+            <div
+              key={group.label}
+              className="relative"
+              onMouseEnter={() => handleGroupMouseEnter(group.label)}
+              onMouseLeave={handleGroupMouseLeave}
+            >
               <button
-                onClick={() => sidebarCollapsed ? undefined : toggleGroup(group.label)}
+                onClick={() => toggleGroup(group.label)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                   hasActive ? 'text-nav-text-active bg-nav-hover' : 'hover:bg-nav-hover'
                 }`}
+                title={sidebarCollapsed ? group.label : undefined}
               >
                 <NavIcon name={group.icon} />
                 {!sidebarCollapsed && (
@@ -205,7 +231,31 @@ export function Sidebar() {
                 )}
               </button>
 
-              {/* Sub-items */}
+              {/* Flyout menu for collapsed sidebar */}
+              {showFlyout && (
+                <div
+                  className="absolute left-full top-0 ml-1 bg-nav-bg border border-white/10 rounded-lg shadow-xl py-2 px-1 min-w-[180px] z-50"
+                  onMouseEnter={() => handleGroupMouseEnter(group.label)}
+                  onMouseLeave={handleGroupMouseLeave}
+                >
+                  <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">{group.label}</div>
+                  {group.items.map((item) => (
+                    <button
+                      key={item.path}
+                      onClick={() => { navigate(item.path); setFlyoutGroup(null); }}
+                      className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
+                        isActive(item.path)
+                          ? 'text-white bg-brand-600/30 font-medium'
+                          : 'text-nav-text hover:text-nav-text-active hover:bg-nav-hover'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Sub-items (expanded sidebar) */}
               {!sidebarCollapsed && isExpanded && (
                 <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
                   {group.items.map((item) => (
