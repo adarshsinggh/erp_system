@@ -374,12 +374,19 @@ class PurchaseRequisitionService extends BaseService {
       throw new Error(`Cannot approve. Current status: "${pr.status}". Only submitted requisitions can be approved.`);
     }
 
+    // Store approval info in metadata (no dedicated columns in schema)
+    const currentMetadata = pr.metadata || {};
+    const metadata = {
+      ...currentMetadata,
+      approved_by: userId,
+      approved_at: new Date().toISOString(),
+    };
+
     const [approved] = await this.db('purchase_requisitions')
       .where({ id, company_id: companyId })
       .update({
         status: 'approved',
-        approved_by: userId,
-        approved_at: this.db.fn.now(),
+        metadata,
         updated_by: userId,
       })
       .returning('*');

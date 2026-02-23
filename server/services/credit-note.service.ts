@@ -79,7 +79,7 @@ interface InvoiceRow {
   customer_id: string;
   grand_total: string;
   amount_paid: string;
-  amount_due: string;
+  balance_due: string;
   status: string;
   place_of_supply: string | null;
   [key: string]: any;
@@ -334,7 +334,7 @@ class CreditNoteService extends BaseService {
           .first() as InvoiceRow | undefined;
 
         if (invoice) {
-          const currentDue = parseFloat(invoice.amount_due);
+          const currentDue = parseFloat(invoice.balance_due);
           const newAmountDue = round2(Math.max(0, currentDue - grandTotal));
           const newAmountPaid = round2(parseFloat(invoice.grand_total) - newAmountDue);
 
@@ -348,7 +348,7 @@ class CreditNoteService extends BaseService {
           await trx('sales_invoices')
             .where({ id: cn.invoice_id })
             .update({
-              amount_due: newAmountDue,
+              balance_due: newAmountDue,
               amount_paid: newAmountPaid,
               status: newStatus,
               updated_by: userId,
@@ -469,7 +469,7 @@ class CreditNoteService extends BaseService {
         .where({ id: cn.invoice_id })
         .select(
           'id', 'invoice_number', 'invoice_date', 'grand_total',
-          'amount_paid', 'amount_due', 'status'
+          'amount_paid', 'balance_due', 'status'
         )
         .first();
     }

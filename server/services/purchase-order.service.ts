@@ -240,7 +240,7 @@ class PurchaseOrderService extends BaseService {
 
       // Auto-generate PO number
       const docNumberResult = await trx.raw(
-        `SELECT get_next_document_number(?, ?, 'purchase_order') as doc_number`,
+        `SELECT get_next_document_number(?, ?, 'po') as doc_number`,
         [input.company_id, input.branch_id]
       );
       const poNumber = docNumberResult.rows[0].doc_number;

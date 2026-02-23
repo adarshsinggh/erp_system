@@ -137,6 +137,7 @@ export async function seed(knex: Knex): Promise<void> {
       { company_id: companyId, branch_id: branch.id, document_type: 'delivery_challan', prefix_pattern: 'DC-', pad_length: 4, financial_year_id: fy.id },
       { company_id: companyId, branch_id: branch.id, document_type: 'payment_receipt', prefix_pattern: 'REC-', pad_length: 4, financial_year_id: fy.id },
       { company_id: companyId, branch_id: branch.id, document_type: 'payment_made', prefix_pattern: 'PAY-', pad_length: 4, financial_year_id: fy.id },
+      { company_id: companyId, branch_id: branch.id, document_type: 'purchase_requisition', prefix_pattern: 'PR-', pad_length: 4, financial_year_id: fy.id },
     ]);
 
     console.log('[Seed] Document sequences created');

@@ -4,7 +4,7 @@
 // Description: Sales Invoice service with GST-compliant
 //              invoicing, SO linking, partial invoicing,
 //              place of supply (CGST+SGST vs IGST), TCS,
-//              amount_paid / amount_due tracking, due date
+//              amount_paid / balance_due tracking, due date
 //              computation, e-invoice IRN readiness, and
 //              SO invoiced_quantity updates.
 //
@@ -253,7 +253,6 @@ class SalesInvoiceService extends BaseService {
         hsn_code: line.hsn_code || product.hsn_code || null,
         sales_order_line_id: line.sales_order_line_id || null,
         warehouse_id: line.warehouse_id || null,
-        batch_id: line.batch_id || null,
       };
     });
 
@@ -282,7 +281,7 @@ class SalesInvoiceService extends BaseService {
         grand_total: grandTotal,
         round_off: roundOff,
         amount_paid: 0,
-        amount_due: grandTotal,
+        balance_due: grandTotal,
       },
       resolvedPlaceOfSupply: supplyState,
     };
@@ -384,7 +383,7 @@ class SalesInvoiceService extends BaseService {
           billing_address_id: input.billing_address_id || null,
           shipping_address_id: input.shipping_address_id || null,
           place_of_supply: resolvedPlaceOfSupply,
-          is_reverse_charge: input.is_reverse_charge || false,
+          reverse_charge: input.is_reverse_charge || false,
           currency_code: input.currency_code || 'INR',
           exchange_rate: input.exchange_rate || 1.0,
           ...headerTotals,
@@ -637,14 +636,14 @@ class SalesInvoiceService extends BaseService {
       const today = new Date().toISOString().split('T')[0];
       query = query
         .where('due_date', '<', today)
-        .where('amount_due', '>', 0)
+        .where('balance_due', '>', 0)
         .whereNotIn('status', ['paid', 'cancelled']);
     }
 
     if (search) {
       query = query.where(function () {
         this.orWhereILike('invoice_number', `%${search}%`);
-        this.orWhereILike('e_invoice_irn', `%${search}%`);
+        this.orWhereILike('irn', `%${search}%`);
       });
     }
 
@@ -685,7 +684,10 @@ class SalesInvoiceService extends BaseService {
         throw new Error(`Cannot edit invoice in "${existing.status}" status. Only draft invoices can be edited.`);
       }
 
-      const { lines, ...headerUpdates } = input;
+      const { lines, is_reverse_charge, ...headerUpdates } = input;
+      if (is_reverse_charge !== undefined) {
+        (headerUpdates as any).reverse_charge = is_reverse_charge;
+      }
 
       if (lines && lines.length > 0) {
         const branchId = existing.branch_id;
@@ -773,10 +775,6 @@ class SalesInvoiceService extends BaseService {
       updated_by: userId,
     };
 
-    if (newStatus === 'approved') {
-      updateData.approved_by = userId;
-    }
-
     const [updated] = await this.db('sales_invoices')
       .where({ id, company_id: companyId })
       .update(updateData)
@@ -785,7 +783,7 @@ class SalesInvoiceService extends BaseService {
     return updated;
   }
 
-  // ──────── RECORD PAYMENT (updates amount_paid / amount_due / status) ────────
+  // ──────── RECORD PAYMENT (updates amount_paid / balance_due / status) ────────
   // Called by Payment Receipt service (Step 20)
 
   async recordPayment(
@@ -803,7 +801,7 @@ class SalesInvoiceService extends BaseService {
 
     if (!invoice) throw new Error('Invoice not found');
 
-    const currentDue = parseFloat(invoice.amount_due);
+    const currentDue = parseFloat(invoice.balance_due);
     if (paymentAmount > currentDue) {
       throw new Error(
         `Payment amount ${paymentAmount} exceeds amount due ${currentDue}`
@@ -824,7 +822,7 @@ class SalesInvoiceService extends BaseService {
       .where({ id: invoiceId })
       .update({
         amount_paid: newAmountPaid,
-        amount_due: newAmountDue,
+        balance_due: newAmountDue,
         status: newStatus,
         updated_by: userId,
       })
@@ -869,7 +867,7 @@ class SalesInvoiceService extends BaseService {
 
     const [updated] = await this.db('sales_invoices')
       .where({ id, company_id: companyId })
-      .update({ e_invoice_irn: irn, updated_by: userId })
+      .update({ irn, updated_by: userId })
       .returning('*');
 
     return updated;
@@ -884,9 +882,9 @@ class SalesInvoiceService extends BaseService {
       .where({ company_id: companyId, is_deleted: false })
       .whereIn('status', ['sent', 'partially_paid'])
       .where('due_date', '<', today)
-      .where('amount_due', '>', 0)
+      .where('balance_due', '>', 0)
       .update({ status: 'overdue' })
-      .returning(['id', 'invoice_number', 'amount_due']);
+      .returning(['id', 'invoice_number', 'balance_due']);
 
     return { overdue_count: overdue.length, overdue };
   }
@@ -901,7 +899,7 @@ class SalesInvoiceService extends BaseService {
         this.db.raw('COUNT(*) as total_invoices'),
         this.db.raw('COALESCE(SUM(grand_total), 0) as total_invoiced'),
         this.db.raw('COALESCE(SUM(amount_paid), 0) as total_paid'),
-        this.db.raw('COALESCE(SUM(amount_due), 0) as total_outstanding')
+        this.db.raw('COALESCE(SUM(balance_due), 0) as total_outstanding')
       )
       .first();
 
@@ -909,7 +907,7 @@ class SalesInvoiceService extends BaseService {
       .where({ customer_id: customerId, company_id: companyId, is_deleted: false, status: 'overdue' })
       .select(
         this.db.raw('COUNT(*) as overdue_count'),
-        this.db.raw('COALESCE(SUM(amount_due), 0) as overdue_amount')
+        this.db.raw('COALESCE(SUM(balance_due), 0) as overdue_amount')
       )
       .first();
 

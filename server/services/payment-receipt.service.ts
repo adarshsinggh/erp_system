@@ -32,7 +32,7 @@ export interface CreatePaymentReceiptInput {
   bank_account_id?: string;
   cheque_number?: string;
   cheque_date?: string;
-  transaction_reference?: string;
+  reference_number?: string;
   invoice_id?: string;          // null = advance payment
   tds_deducted?: number;
   narration?: string;
@@ -47,7 +47,7 @@ export interface UpdatePaymentReceiptInput {
   bank_account_id?: string;
   cheque_number?: string;
   cheque_date?: string;
-  transaction_reference?: string;
+  reference_number?: string;
   invoice_id?: string;
   tds_deducted?: number;
   narration?: string;
@@ -76,7 +76,7 @@ interface InvoiceRow {
   invoice_number: string;
   grand_total: string;
   amount_paid: string;
-  amount_due: string;
+  balance_due: string;
   status: string;
   [key: string]: any;
 }
@@ -128,9 +128,9 @@ class PaymentReceiptService extends BaseService {
           throw new Error(`Cannot receive payment against a ${invoice.status} invoice`);
         }
 
-        // Validate payment amount doesn't exceed amount_due (including TDS)
+        // Validate payment amount doesn't exceed balance_due (including TDS)
         const effectivePayment = round2(input.amount + (input.tds_deducted || 0));
-        const amountDue = parseFloat(invoice.amount_due);
+        const amountDue = parseFloat(invoice.balance_due);
         if (effectivePayment > round2(amountDue + 0.01)) { // small tolerance for rounding
           throw new Error(
             `Payment amount (${input.amount}) plus TDS (${input.tds_deducted || 0}) = ${effectivePayment} ` +
@@ -182,10 +182,10 @@ class PaymentReceiptService extends BaseService {
           bank_account_id: input.bank_account_id || null,
           cheque_number: input.cheque_number || null,
           cheque_date: input.cheque_date || null,
-          transaction_reference: input.transaction_reference || null,
+          reference_number: input.reference_number || null,
           invoice_id: input.invoice_id || null,
           tds_deducted: input.tds_deducted || null,
-          narration: input.narration || null,
+          notes: input.narration || null,
           status: 'draft',
           metadata: input.metadata || {},
           created_by: input.created_by,
@@ -286,7 +286,7 @@ class PaymentReceiptService extends BaseService {
             .where({ id: receipt.invoice_id })
             .update({
               amount_paid: newAmountPaid,
-              amount_due: newAmountDue,
+              balance_due: newAmountDue,
               status: newStatus,
               updated_by: userId,
             });
@@ -352,7 +352,7 @@ class PaymentReceiptService extends BaseService {
         .where({ id: receipt.invoice_id })
         .select(
           'id', 'invoice_number', 'invoice_date', 'grand_total',
-          'amount_paid', 'amount_due', 'status'
+          'amount_paid', 'balance_due', 'status'
         )
         .first();
     }
@@ -419,8 +419,8 @@ class PaymentReceiptService extends BaseService {
       query = query.where(function () {
         this.orWhereILike('receipt_number', `%${search}%`);
         this.orWhereILike('cheque_number', `%${search}%`);
-        this.orWhereILike('transaction_reference', `%${search}%`);
-        this.orWhereILike('narration', `%${search}%`);
+        this.orWhereILike('reference_number', `%${search}%`);
+        this.orWhereILike('notes', `%${search}%`);
       });
     }
 
@@ -445,7 +445,7 @@ class PaymentReceiptService extends BaseService {
       if (invoiceIds.length > 0) {
         const invoices = await this.db('sales_invoices')
           .whereIn('id', invoiceIds)
-          .select('id', 'invoice_number', 'grand_total', 'amount_due');
+          .select('id', 'invoice_number', 'grand_total', 'balance_due');
         invoiceMap = new Map(invoices.map((inv: any) => [inv.id, inv]));
       }
 
@@ -495,10 +495,10 @@ class PaymentReceiptService extends BaseService {
     if (input.bank_account_id !== undefined) updateData.bank_account_id = input.bank_account_id || null;
     if (input.cheque_number !== undefined) updateData.cheque_number = input.cheque_number || null;
     if (input.cheque_date !== undefined) updateData.cheque_date = input.cheque_date || null;
-    if (input.transaction_reference !== undefined) updateData.transaction_reference = input.transaction_reference || null;
+    if (input.reference_number !== undefined) updateData.reference_number = input.reference_number || null;
     if (input.invoice_id !== undefined) updateData.invoice_id = input.invoice_id || null;
     if (input.tds_deducted !== undefined) updateData.tds_deducted = input.tds_deducted || null;
-    if (input.narration !== undefined) updateData.narration = input.narration || null;
+    if (input.narration !== undefined) updateData.notes = input.narration || null;
     if (input.metadata !== undefined) updateData.metadata = input.metadata;
 
     const [updated] = await this.db('payment_receipts')
@@ -627,7 +627,7 @@ class PaymentReceiptService extends BaseService {
       const paymentAmount = parseFloat(receipt.amount);
       const tdsAmount = parseFloat(receipt.tds_deducted || '0');
       const totalSettlement = round2(paymentAmount + tdsAmount);
-      const amountDue = parseFloat(invoice.amount_due);
+      const amountDue = parseFloat(invoice.balance_due);
 
       if (totalSettlement > round2(amountDue + 0.01)) {
         throw new Error(
