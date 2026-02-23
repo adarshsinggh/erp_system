@@ -104,16 +104,21 @@ class PurchaseOrderService extends BaseService {
 
     const branchState = (branch?.state || '').trim().toLowerCase();
 
-    // 2. Get vendor state (origin / place of supply)
+    // 2. Get vendor state from default address
     const vendor = await trx('vendors')
       .where({ id: vendorId, company_id: companyId, is_deleted: false })
-      .select('state', 'gstin')
+      .select('gstin')
       .first();
 
-    // Derive vendor state from GSTIN or address if available
-    let vendorState = branchState; // default to intra-state
-    if (vendor?.state) {
-      vendorState = vendor.state.trim().toLowerCase();
+    const vendorAddress = await trx('addresses')
+      .where({ entity_type: 'vendor', entity_id: vendorId, is_deleted: false, is_default: true })
+      .select('state')
+      .first();
+
+    // Derive vendor state from address or default to intra-state
+    let vendorState = branchState;
+    if (vendorAddress?.state) {
+      vendorState = vendorAddress.state.trim().toLowerCase();
     }
 
     const isInterState = branchState !== vendorState;
