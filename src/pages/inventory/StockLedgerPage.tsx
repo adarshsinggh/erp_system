@@ -115,8 +115,8 @@ export function StockLedgerPage() {
       key: 'item', header: 'Item', width: '200px',
       render: (row) => (
         <div>
-          <span className="font-mono text-xs font-medium text-brand-700">{row.item_code}</span>
-          <span className="text-sm text-gray-600 ml-1.5">{row.item_name}</span>
+          <span className="font-mono text-xs font-medium text-brand-700">{row.item_code || (row as any).product_code || '—'}</span>
+          <span className="text-sm text-gray-600 ml-1.5">{row.item_name || (row as any).product_name || ''}</span>
         </div>
       ),
     },

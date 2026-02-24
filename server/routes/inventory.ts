@@ -37,13 +37,14 @@ export async function inventoryRoutes(server: FastifyInstance) {
         item_id, product_id,
         transaction_type, reference_type,
         from_date, to_date,
-        sort_by, sort_order,
+        search, sort_by, sort_order,
       } = request.query as any;
 
       const result = await inventoryService.getStockLedgerEntries({
         companyId: request.user!.companyId,
         page: parseInt(page) || 1,
         limit: parseInt(limit) || 50,
+        search,
         branch_id,
         warehouse_id,
         item_id,

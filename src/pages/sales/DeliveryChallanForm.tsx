@@ -7,7 +7,8 @@ import { customersApi, Customer } from '@/api/modules/customers.api';
 import { productsApi, Product } from '@/api/modules/products.api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { FormField, Input, Textarea, ConfirmDialog, toast } from '@/components/shared/FormElements';
+import { FormField, Input, Select, Textarea, ConfirmDialog, toast } from '@/components/shared/FormElements';
+import { settingsApi, Warehouse } from '@/api/modules/settings.api';
 import { useKeyboardShortcuts, useDebounce } from '@/hooks';
 import type { StatusConfig } from '@/lib/constants';
 
@@ -54,6 +55,8 @@ export function DeliveryChallanForm() {
   const [soNumber, setSoNumber] = useState('');
   const [lines, setLines] = useState<FormLine[]>([emptyLine()]);
 
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -80,6 +83,7 @@ export function DeliveryChallanForm() {
   });
 
   useEffect(() => { if (isEdit) loadChallan(); }, [id]);
+  useEffect(() => { settingsApi.listWarehouses().then((r) => setWarehouses(r.data || [])).catch(() => {}); }, []);
 
   async function loadChallan() {
     setLoading(true);
@@ -156,6 +160,7 @@ export function DeliveryChallanForm() {
 
   async function handleSave() {
     if (!form.customer_id) { toast.error('Please select a customer'); return; }
+    if (!form.warehouse_id) { toast.error('Please select a warehouse'); return; }
     if (!form.challan_date) { toast.error('Please enter challan date'); return; }
     const validLines = lines.filter((l) => l.product_id && l.quantity > 0);
     if (!validLines.length) { toast.error('Add at least one line item'); return; }
@@ -249,6 +254,12 @@ export function DeliveryChallanForm() {
           </FormField>
           <FormField label="Challan Date" required>
             <Input type="date" value={form.challan_date} onChange={(e) => setForm((f) => ({ ...f, challan_date: e.target.value }))} disabled={readonly} />
+          </FormField>
+          <FormField label="Warehouse" required>
+            <Select value={form.warehouse_id}
+              onChange={(e) => setForm((f) => ({ ...f, warehouse_id: e.target.value }))}
+              options={[{ value: '', label: 'Select warehouse...' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.name} (${w.code})` }))]}
+              disabled={readonly} />
           </FormField>
           <FormField label="Sales Order" hint="Link to existing SO" className="relative">
             <Input value={soSearch}

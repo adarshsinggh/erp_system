@@ -65,7 +65,7 @@ class ProductService extends BaseService {
 
       if (active_bom) {
         bom_lines = await this.db('bom_lines')
-          .where({ bom_header_id: active_bom.id, company_id: companyId, is_deleted: false })
+          .where({ bom_header_id: active_bom.id, 'bom_lines.company_id': companyId, 'bom_lines.is_deleted': false })
           .leftJoin('items', 'bom_lines.component_item_id', 'items.id')
           .leftJoin('products as sub_product', 'bom_lines.component_product_id', 'sub_product.id')
           .leftJoin('units_of_measurement as uom', 'bom_lines.uom_id', 'uom.id')

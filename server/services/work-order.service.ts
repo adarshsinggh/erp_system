@@ -146,7 +146,7 @@ class WorkOrderService extends BaseService {
 
       // Get BOM lines for explosion
       const bomLines = await trx('bom_lines')
-        .where({ bom_header_id: input.bom_header_id, company_id: input.company_id, is_deleted: false })
+        .where({ bom_header_id: input.bom_header_id, 'bom_lines.company_id': input.company_id, 'bom_lines.is_deleted': false })
         .orderBy('line_number');
 
       if (bomLines.length === 0) {

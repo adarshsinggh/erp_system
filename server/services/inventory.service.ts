@@ -637,6 +637,7 @@ class InventoryService extends BaseService {
       companyId,
       page = 1,
       limit = 50,
+      search,
       branch_id,
       warehouse_id,
       item_id,
@@ -652,6 +653,12 @@ class InventoryService extends BaseService {
     const offset = (page - 1) * limit;
 
     let query = this.db('stock_ledger as sl')
+      .leftJoin('items as i', 'sl.item_id', 'i.id')
+      .leftJoin('products as p', 'sl.product_id', 'p.id')
+      .leftJoin('warehouses as w', 'sl.warehouse_id', 'w.id')
+      .leftJoin('branches as br', 'sl.branch_id', 'br.id')
+      .leftJoin('units_of_measurement as u', 'sl.uom_id', 'u.id')
+      .leftJoin('stock_batches as sb', 'sl.batch_id', 'sb.id')
       .where('sl.company_id', companyId);
 
     if (branch_id) query = query.where('sl.branch_id', branch_id);
@@ -663,28 +670,37 @@ class InventoryService extends BaseService {
     if (from_date) query = query.where('sl.transaction_date', '>=', from_date);
     if (to_date) query = query.where('sl.transaction_date', '<=', to_date);
 
+    // Search across item/product name/code
+    if (search) {
+      query = query.where(function () {
+        this.orWhereILike('i.name', `%${search}%`)
+          .orWhereILike('i.item_code', `%${search}%`)
+          .orWhereILike('p.name', `%${search}%`)
+          .orWhereILike('p.product_code', `%${search}%`);
+      });
+    }
+
     // Count
     const countResult = await query.clone().count('sl.id as total').first();
     const total = parseInt(String(countResult?.total || '0'), 10);
 
-    // Data with joins for readable output
+    // Data with computed fields
     const data = await query
       .clone()
-      .leftJoin('items as i', 'sl.item_id', 'i.id')
-      .leftJoin('products as p', 'sl.product_id', 'p.id')
-      .leftJoin('warehouses as w', 'sl.warehouse_id', 'w.id')
-      .leftJoin('branches as br', 'sl.branch_id', 'br.id')
-      .leftJoin('units_of_measurement as u', 'sl.uom_id', 'u.id')
       .select(
         'sl.*',
-        'i.name as item_name',
-        'i.item_code',
+        this.db.raw("COALESCE(i.item_code, p.product_code) as item_code"),
+        this.db.raw("COALESCE(i.name, p.name) as item_name"),
         'p.name as product_name',
         'p.product_code',
         'w.name as warehouse_name',
         'br.name as branch_name',
         'u.name as uom_name',
-        'u.code as uom_symbol'
+        'u.code as uom_symbol',
+        'sb.batch_number',
+        this.db.raw("CASE WHEN sl.quantity_in > 0 THEN 'in' ELSE 'out' END as direction"),
+        this.db.raw("CASE WHEN sl.quantity_in > 0 THEN sl.quantity_in ELSE sl.quantity_out END as quantity"),
+        'sl.balance_quantity as running_balance'
       )
       .orderBy(`sl.${sortBy}`, sortOrder)
       .orderBy('sl.created_at', sortOrder)
@@ -987,8 +1003,8 @@ class InventoryService extends BaseService {
       .clone()
       .select(
         'ss.*',
-        'i.name as item_name',
-        'i.item_code',
+        this.db.raw("COALESCE(i.item_code, p.product_code) as item_code"),
+        this.db.raw("COALESCE(i.name, p.name) as item_name"),
         'i.item_type',
         'i.min_stock_threshold',
         'i.reorder_quantity',
@@ -1000,7 +1016,9 @@ class InventoryService extends BaseService {
         'b.name as branch_name',
         'b.code as branch_code',
         'u.name as uom_name',
-        'u.code as uom_symbol'
+        'u.code as uom_symbol',
+        'ss.valuation_rate as weighted_avg_cost',
+        this.db.raw(`CASE WHEN i.min_stock_threshold IS NOT NULL AND i.min_stock_threshold > 0 AND ss.available_quantity < i.min_stock_threshold THEN true ELSE false END as is_below_minimum`)
       )
       .orderBy(sortBy, sortOrder)
       .limit(limit)

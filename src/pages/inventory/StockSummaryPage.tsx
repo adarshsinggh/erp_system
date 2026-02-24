@@ -102,12 +102,12 @@ export function StockSummaryPage() {
 
   const columns: ColumnDef<StockSummaryItem>[] = [
     {
-      key: 'item_code', header: 'Item Code', sortable: true, width: '120px',
-      render: (row) => <span className="font-mono text-xs font-medium text-brand-700">{row.item_code}</span>,
+      key: 'item_code', header: 'Code', sortable: true, width: '120px',
+      render: (row) => <span className="font-mono text-xs font-medium text-brand-700">{row.item_code || (row as any).product_code || '—'}</span>,
     },
     {
-      key: 'item_name', header: 'Item Name', sortable: true,
-      render: (row) => <span className="text-sm font-medium text-gray-900">{row.item_name}</span>,
+      key: 'item_name', header: 'Name', sortable: true,
+      render: (row) => <span className="text-sm font-medium text-gray-900">{row.item_name || (row as any).product_name || '—'}</span>,
     },
     {
       key: 'warehouse_name', header: 'Warehouse', width: '150px',
