@@ -652,8 +652,6 @@ class SalesOrderService extends BaseService {
         .where({ id })
         .update({
           status: 'confirmed',
-          approved_by: userId,
-          approved_at: trx.fn.now(),
           updated_by: userId,
         })
         .returning('*');

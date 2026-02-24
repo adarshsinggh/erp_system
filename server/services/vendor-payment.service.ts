@@ -158,7 +158,7 @@ class VendorPaymentService extends BaseService {
 
       // Auto-generate payment number
       const docNumberResult = await trx.raw(
-        `SELECT get_next_document_number(?, ?, 'vendor_payment') as doc_number`,
+        `SELECT get_next_document_number(?, ?, 'payment_made') as doc_number`,
         [input.company_id, input.branch_id]
       );
       const paymentNumber = docNumberResult.rows[0].doc_number;

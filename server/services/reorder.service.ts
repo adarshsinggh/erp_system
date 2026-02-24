@@ -265,7 +265,7 @@ class ReorderService extends BaseService {
         'i.purchase_price',
         'ss.last_purchase_date',
         'ss.last_movement_date',
-        'u.symbol as uom_symbol',
+        'u.code as uom_symbol',
         'u.name as uom_name'
       )
       .select(
@@ -508,7 +508,7 @@ class ReorderService extends BaseService {
           WHEN a.anomaly_ratio >= ? THEN 'spike'
           ELSE 'drop'
         END as anomaly_type,
-        COALESCE(u.symbol, u.code) as uom_symbol
+        u.code as uom_symbol
       FROM analysis a
       JOIN items i ON a.item_id = i.id
       JOIN warehouses w ON a.warehouse_id = w.id

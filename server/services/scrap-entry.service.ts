@@ -210,7 +210,7 @@ class ScrapEntryService extends BaseService {
         'b.name as branch_name',
         'w.name as warehouse_name',
         'wo.work_order_number',
-        'u.symbol as uom_symbol'
+        'u.code as uom_symbol'
       )
       .orderBy(`se.${sortBy}`, sortOrder)
       .limit(limit).offset(offset);
@@ -236,7 +236,7 @@ class ScrapEntryService extends BaseService {
         'b.name as branch_name',
         'w.name as warehouse_name',
         'wo.work_order_number',
-        'u.name as uom_name', 'u.symbol as uom_symbol'
+        'u.name as uom_name', 'u.code as uom_symbol'
       )
       .first();
 

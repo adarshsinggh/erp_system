@@ -8,6 +8,7 @@ import {
   taxService,
   locationService,
 } from '../services/masters.service';
+import { getDb } from '../database/connection';
 
 export async function mastersRoutes(server: FastifyInstance) {
   // Categories
@@ -184,5 +185,95 @@ export async function mastersRoutes(server: FastifyInstance) {
     const { id } = request.params as { id: string };
     await locationService.softDelete(id, request.user!.companyId, request.user!.userId);
     return { success: true, message: 'Location deleted' };
+  });
+
+  // ─── Warehouses ─────────────────────────────────────────────────
+
+  server.get('/warehouses', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const db = getDb();
+      const { branch_id } = request.query as { branch_id?: string };
+      let query = db('warehouses')
+        .where({ company_id: request.user!.companyId, is_deleted: false });
+      if (branch_id) query = query.where('branch_id', branch_id);
+      const warehouses = await query.orderBy('name');
+
+      // Enrich with branch name
+      if (warehouses.length > 0) {
+        const branchIds = [...new Set(warehouses.map((w: any) => w.branch_id))];
+        const branches = await db('branches').whereIn('id', branchIds).select('id', 'name');
+        const branchMap = new Map(branches.map((b: any) => [b.id, b.name]));
+        for (const wh of warehouses) {
+          (wh as any).branch_name = branchMap.get(wh.branch_id) || '';
+          (wh as any).status = wh.is_active ? 'active' : 'inactive';
+        }
+      }
+
+      return { success: true, data: warehouses };
+    } catch (error: any) {
+      return reply.code(500).send({ success: false, error: error.message || 'Failed to load warehouses' });
+    }
+  });
+
+  server.get('/warehouses/:id', { preHandler: [authenticate] }, async (request, reply) => {
+    const db = getDb();
+    const { id } = request.params as { id: string };
+    const wh = await db('warehouses')
+      .where({ id, company_id: request.user!.companyId, is_deleted: false })
+      .first();
+    if (!wh) return reply.code(404).send({ success: false, error: 'Warehouse not found' });
+    return { success: true, data: wh };
+  });
+
+  server.post('/warehouses', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const db = getDb();
+      const body = request.body as any;
+      const [wh] = await db('warehouses')
+        .insert({
+          company_id: request.user!.companyId,
+          branch_id: body.branch_id,
+          code: body.code,
+          name: body.name,
+          address: body.address || null,
+          warehouse_type: body.warehouse_type || 'main',
+          is_default: body.is_default || false,
+          created_by: request.user!.userId,
+        })
+        .returning('*');
+      return reply.code(201).send({ success: true, data: wh });
+    } catch (error: any) {
+      return reply.code(400).send({ success: false, error: error.message });
+    }
+  });
+
+  server.put('/warehouses/:id', { preHandler: [authenticate] }, async (request, reply) => {
+    const db = getDb();
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    const [updated] = await db('warehouses')
+      .where({ id, company_id: request.user!.companyId })
+      .update({
+        name: body.name,
+        code: body.code,
+        address: body.address,
+        warehouse_type: body.warehouse_type,
+        is_active: body.status === 'active',
+        updated_by: request.user!.userId,
+      })
+      .returning('*');
+    if (!updated) return reply.code(404).send({ success: false, error: 'Warehouse not found' });
+    return { success: true, data: updated };
+  });
+
+  server.delete('/warehouses/:id', { preHandler: [authenticate] }, async (request, reply) => {
+    const db = getDb();
+    const { id } = request.params as { id: string };
+    const [deleted] = await db('warehouses')
+      .where({ id, company_id: request.user!.companyId })
+      .update({ is_deleted: true, deleted_at: db.fn.now(), deleted_by: request.user!.userId })
+      .returning('*');
+    if (!deleted) return reply.code(404).send({ success: false, error: 'Warehouse not found' });
+    return { success: true, message: 'Warehouse deleted' };
   });
 }

@@ -351,7 +351,7 @@ class StockAdjustmentService extends BaseService {
         'p.name as product_name',
         'p.product_code',
         'u.name as uom_name',
-        'u.symbol as uom_symbol',
+        'u.code as uom_symbol',
         'sb.batch_number'
       )
       .orderBy('sal.line_number');

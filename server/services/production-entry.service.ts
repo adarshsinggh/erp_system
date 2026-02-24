@@ -213,7 +213,7 @@ class ProductionEntryService extends BaseService {
         'wo.work_order_number',
         'p.name as product_name', 'p.product_code',
         'w.name as warehouse_name',
-        'u.symbol as uom_symbol'
+        'u.code as uom_symbol'
       )
       .orderBy(`pe.${sortBy}`, sortOrder)
       .limit(limit).offset(offset);
@@ -235,7 +235,7 @@ class ProductionEntryService extends BaseService {
         'wo.work_order_number', 'wo.planned_quantity', 'wo.completed_quantity as wo_completed',
         'p.name as product_name', 'p.product_code',
         'w.name as warehouse_name',
-        'u.name as uom_name', 'u.symbol as uom_symbol'
+        'u.name as uom_name', 'u.code as uom_symbol'
       )
       .first();
 

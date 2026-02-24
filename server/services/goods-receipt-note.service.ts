@@ -149,7 +149,7 @@ class GoodsReceiptNoteService extends BaseService {
 
       // Auto-generate GRN number
       const docNumberResult = await trx.raw(
-        `SELECT get_next_document_number(?, ?, 'goods_receipt_note') as doc_number`,
+        `SELECT get_next_document_number(?, ?, 'grn') as doc_number`,
         [input.company_id, input.branch_id]
       );
       const grnNumber = docNumberResult.rows[0].doc_number;

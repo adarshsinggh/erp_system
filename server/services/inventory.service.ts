@@ -684,7 +684,7 @@ class InventoryService extends BaseService {
         'w.name as warehouse_name',
         'br.name as branch_name',
         'u.name as uom_name',
-        'u.symbol as uom_symbol'
+        'u.code as uom_symbol'
       )
       .orderBy(`sl.${sortBy}`, sortOrder)
       .orderBy('sl.created_at', sortOrder)
@@ -1000,7 +1000,7 @@ class InventoryService extends BaseService {
         'b.name as branch_name',
         'b.code as branch_code',
         'u.name as uom_name',
-        'u.symbol as uom_symbol'
+        'u.code as uom_symbol'
       )
       .orderBy(sortBy, sortOrder)
       .limit(limit)
@@ -1184,7 +1184,7 @@ class InventoryService extends BaseService {
         'ss.free_quantity',
         'ss.last_purchase_date',
         'ss.last_movement_date',
-        'u.symbol as uom_symbol'
+        'u.code as uom_symbol'
       )
       .select(
         this.db.raw('ROUND(i.min_stock_threshold - ss.available_quantity, 3) as shortage_quantity'),
@@ -1257,7 +1257,7 @@ class InventoryService extends BaseService {
         'ss.total_value',
         'ss.last_sale_date',
         'ss.last_movement_date',
-        'u.symbol as uom_symbol'
+        'u.code as uom_symbol'
       )
       .select(
         this.db.raw('ROUND(ss.available_quantity - i.max_stock_level, 3) as excess_quantity'),
@@ -1327,7 +1327,7 @@ class InventoryService extends BaseService {
         'ss.last_movement_date',
         'ss.last_sale_date',
         'ss.last_purchase_date',
-        'u.symbol as uom_symbol'
+        'u.code as uom_symbol'
       )
       .select(
         this.db.raw(`

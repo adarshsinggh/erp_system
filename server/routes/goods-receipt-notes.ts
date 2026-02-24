@@ -57,26 +57,21 @@ export async function goodsReceiptNoteRoutes(server: FastifyInstance) {
         remarks: body.remarks || body.internal_notes,
         metadata,
         lines: body.lines.map((l: any, idx: number) => {
-          // Build per-line metadata
-          const lineMetadata: Record<string, any> = l.metadata || {};
-          if (l.batch_number) lineMetadata.batch_number = l.batch_number;
-          if (l.expiry_date) lineMetadata.expiry_date = l.expiry_date;
-          if (l.rejection_reason) lineMetadata.rejection_reason = l.rejection_reason;
-
           return {
             line_number: l.line_number || idx + 1,
             item_id: l.item_id,
             po_line_id: l.po_line_id,
-            quantity_ordered: l.ordered_quantity !== undefined ? parseFloat(l.ordered_quantity) : (l.quantity_ordered !== undefined ? parseFloat(l.quantity_ordered) : undefined),
-            quantity_received: l.received_quantity !== undefined ? parseFloat(l.received_quantity) : (l.quantity_received !== undefined ? parseFloat(l.quantity_received) : undefined),
-            quantity_accepted: l.accepted_quantity !== undefined ? parseFloat(l.accepted_quantity) : (l.quantity_accepted !== undefined ? parseFloat(l.quantity_accepted) : undefined),
-            quantity_rejected: l.rejected_quantity !== undefined ? parseFloat(l.rejected_quantity) : (l.quantity_rejected !== undefined ? parseFloat(l.quantity_rejected) : undefined),
+            ordered_quantity: l.ordered_quantity !== undefined ? parseFloat(l.ordered_quantity) : (l.quantity_ordered !== undefined ? parseFloat(l.quantity_ordered) : 0),
+            received_quantity: l.received_quantity !== undefined ? parseFloat(l.received_quantity) : (l.quantity_received !== undefined ? parseFloat(l.quantity_received) : 0),
+            accepted_quantity: l.accepted_quantity !== undefined ? parseFloat(l.accepted_quantity) : (l.quantity_accepted !== undefined ? parseFloat(l.quantity_accepted) : 0),
+            rejected_quantity: l.rejected_quantity !== undefined ? parseFloat(l.rejected_quantity) : (l.quantity_rejected !== undefined ? parseFloat(l.quantity_rejected) : 0),
             uom_id: l.uom_id,
             unit_cost: l.unit_cost !== undefined ? parseFloat(l.unit_cost) : undefined,
-            batch_id: l.batch_id,
+            batch_number: l.batch_number,
             serial_numbers: l.serial_numbers,
+            expiry_date: l.expiry_date,
+            rejection_reason: l.rejection_reason,
             remarks: l.remarks,
-            metadata: Object.keys(lineMetadata).length > 0 ? lineMetadata : undefined,
           };
         }),
         created_by: user.userId,
@@ -180,25 +175,21 @@ export async function goodsReceiptNoteRoutes(server: FastifyInstance) {
         vendor_challan_no: body.vendor_challan_no || body.vendor_challan_number,
         metadata: Object.keys(metadata).length > 0 ? metadata : body.metadata,
         lines: body.lines?.map((l: any, idx: number) => {
-          const lineMetadata: Record<string, any> = l.metadata || {};
-          if (l.batch_number) lineMetadata.batch_number = l.batch_number;
-          if (l.expiry_date) lineMetadata.expiry_date = l.expiry_date;
-          if (l.rejection_reason) lineMetadata.rejection_reason = l.rejection_reason;
-
           return {
             line_number: l.line_number || idx + 1,
             item_id: l.item_id,
             po_line_id: l.po_line_id,
-            quantity_ordered: l.ordered_quantity !== undefined ? parseFloat(l.ordered_quantity) : (l.quantity_ordered !== undefined ? parseFloat(l.quantity_ordered) : undefined),
-            quantity_received: l.received_quantity !== undefined ? parseFloat(l.received_quantity) : (l.quantity_received !== undefined ? parseFloat(l.quantity_received) : undefined),
-            quantity_accepted: l.accepted_quantity !== undefined ? parseFloat(l.accepted_quantity) : (l.quantity_accepted !== undefined ? parseFloat(l.quantity_accepted) : undefined),
-            quantity_rejected: l.rejected_quantity !== undefined ? parseFloat(l.rejected_quantity) : (l.quantity_rejected !== undefined ? parseFloat(l.quantity_rejected) : undefined),
+            ordered_quantity: l.ordered_quantity !== undefined ? parseFloat(l.ordered_quantity) : (l.quantity_ordered !== undefined ? parseFloat(l.quantity_ordered) : 0),
+            received_quantity: l.received_quantity !== undefined ? parseFloat(l.received_quantity) : (l.quantity_received !== undefined ? parseFloat(l.quantity_received) : 0),
+            accepted_quantity: l.accepted_quantity !== undefined ? parseFloat(l.accepted_quantity) : (l.quantity_accepted !== undefined ? parseFloat(l.quantity_accepted) : 0),
+            rejected_quantity: l.rejected_quantity !== undefined ? parseFloat(l.rejected_quantity) : (l.quantity_rejected !== undefined ? parseFloat(l.quantity_rejected) : 0),
             uom_id: l.uom_id,
             unit_cost: l.unit_cost !== undefined ? parseFloat(l.unit_cost) : undefined,
-            batch_id: l.batch_id,
+            batch_number: l.batch_number,
             serial_numbers: l.serial_numbers,
+            expiry_date: l.expiry_date,
+            rejection_reason: l.rejection_reason,
             remarks: l.remarks,
-            metadata: Object.keys(lineMetadata).length > 0 ? lineMetadata : undefined,
           };
         }),
         updated_by: user.userId,

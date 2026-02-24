@@ -165,7 +165,7 @@ class InsightsService extends BaseService {
         END as days_until_stockout,
         i.min_stock_threshold,
         i.reorder_quantity,
-        COALESCE(u.symbol, u.code) as uom_symbol
+        u.code as uom_symbol
       FROM stock_summary ss
       JOIN items i ON ss.item_id = i.id
       JOIN warehouses w ON ss.warehouse_id = w.id

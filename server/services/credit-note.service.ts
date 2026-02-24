@@ -299,11 +299,18 @@ class CreditNoteService extends BaseService {
       throw new Error(`Cannot approve. Current status: "${cn.status}"`);
     }
 
+    const currentMetadata = cn.metadata || {};
+    const metadata = {
+      ...currentMetadata,
+      approved_by: userId,
+      approved_at: new Date().toISOString(),
+    };
+
     const [approved] = await this.db('credit_notes')
       .where({ id, company_id: companyId })
       .update({
         status: 'approved',
-        approved_by: userId,
+        metadata,
         updated_by: userId,
       })
       .returning('*');
@@ -474,11 +481,12 @@ class CreditNoteService extends BaseService {
         .first();
     }
 
-    // Approved by user
+    // Approved by user (stored in metadata)
     let approvedByUser = null;
-    if (cn.approved_by) {
+    const approvedById = cn.metadata?.approved_by;
+    if (approvedById) {
       approvedByUser = await this.db('users')
-        .where({ id: cn.approved_by })
+        .where({ id: approvedById })
         .select('id', 'username', 'full_name')
         .first();
     }

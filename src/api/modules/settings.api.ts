@@ -186,54 +186,27 @@ export const settingsApi = {
     return { success: true, data: null, message: 'Branch deleted' };
   },
 
-  // ─── Warehouses (PENDING — mock) ────────────────────────────
+  // ─── Warehouses ────────────────────────────────────────────────
   listWarehouses: async (branch_id?: string): Promise<ApiResponse<Warehouse[]>> => {
-    // TODO: Replace with apiClient.get<ApiResponse<Warehouse[]>>('/warehouses', { branch_id })
-    await delay(400);
-    const filtered = branch_id
-      ? mockWarehouses.filter((w) => w.branch_id === branch_id)
-      : mockWarehouses;
-    return { success: true, data: filtered };
+    const params: Record<string, unknown> = {};
+    if (branch_id) params.branch_id = branch_id;
+    return apiClient.get<ApiResponse<Warehouse[]>>('/warehouses', params);
   },
 
   getWarehouse: async (id: string): Promise<ApiResponse<Warehouse>> => {
-    await delay(300);
-    const wh = mockWarehouses.find((w) => w.id === id);
-    if (!wh) throw new Error('Warehouse not found');
-    return { success: true, data: wh };
+    return apiClient.get<ApiResponse<Warehouse>>(`/warehouses/${id}`);
   },
 
   createWarehouse: async (data: Partial<Warehouse>): Promise<ApiResponse<Warehouse>> => {
-    await delay(500);
-    const newWh: Warehouse = {
-      id: crypto.randomUUID(),
-      company_id: 'c1',
-      branch_id: data.branch_id || '',
-      branch_name: mockBranches.find((b) => b.id === data.branch_id)?.name || '',
-      name: data.name || '',
-      code: data.code || '',
-      warehouse_type: data.warehouse_type || 'main',
-      address: data.address || '',
-      status: 'active',
-      created_at: new Date().toISOString(),
-    };
-    mockWarehouses.push(newWh);
-    return { success: true, data: newWh };
+    return apiClient.post<ApiResponse<Warehouse>>('/warehouses', data);
   },
 
   updateWarehouse: async (id: string, data: Partial<Warehouse>): Promise<ApiResponse<Warehouse>> => {
-    await delay(500);
-    const idx = mockWarehouses.findIndex((w) => w.id === id);
-    if (idx === -1) throw new Error('Warehouse not found');
-    mockWarehouses[idx] = { ...mockWarehouses[idx], ...data };
-    return { success: true, data: mockWarehouses[idx] };
+    return apiClient.put<ApiResponse<Warehouse>>(`/warehouses/${id}`, data);
   },
 
   deleteWarehouse: async (id: string): Promise<ApiResponse<null>> => {
-    await delay(300);
-    const idx = mockWarehouses.findIndex((w) => w.id === id);
-    if (idx !== -1) mockWarehouses[idx].status = 'inactive';
-    return { success: true, data: null, message: 'Warehouse deleted' };
+    return apiClient.del<ApiResponse<null>>(`/warehouses/${id}`);
   },
 
   // ─── Users (PENDING — mock) ─────────────────────────────────

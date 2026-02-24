@@ -285,7 +285,7 @@ class WorkOrderService extends BaseService {
         'b.name as branch_name',
         'sw.name as source_warehouse_name',
         'tw.name as target_warehouse_name',
-        'u.symbol as uom_symbol'
+        'u.code as uom_symbol'
       )
       .orderBy(`wo.${sortBy}`, sortOrder)
       .limit(limit).offset(offset);
@@ -311,7 +311,7 @@ class WorkOrderService extends BaseService {
         'b.name as branch_name',
         'sw.name as source_warehouse_name',
         'tw.name as target_warehouse_name',
-        'u.name as uom_name', 'u.symbol as uom_symbol'
+        'u.name as uom_name', 'u.code as uom_symbol'
       )
       .first();
 
@@ -327,7 +327,7 @@ class WorkOrderService extends BaseService {
         'wom.*',
         'i.name as item_name', 'i.item_code',
         'cp.name as component_product_name', 'cp.product_code as component_product_code',
-        'mu.name as uom_name', 'mu.symbol as uom_symbol',
+        'mu.name as uom_name', 'mu.code as uom_symbol',
         'sb.batch_number'
       )
       .orderBy('wom.line_number');
