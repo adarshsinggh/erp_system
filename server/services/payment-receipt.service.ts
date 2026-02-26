@@ -155,8 +155,10 @@ class PaymentReceiptService extends BaseService {
       }
 
       // Auto-generate receipt number
+      // Must query ALL records (including soft-deleted) because the
+      // unique constraint on (company_id, receipt_number) includes deleted rows.
       const lastReceipt = await trx('payment_receipts')
-        .where({ company_id: input.company_id, is_deleted: false })
+        .where({ company_id: input.company_id })
         .orderBy('created_at', 'desc')
         .first();
 

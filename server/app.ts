@@ -90,6 +90,24 @@ export async function buildServer() {
 });
   await server.register(sensible);
 
+  // Override the default JSON body parser to accept empty bodies gracefully.
+  // Fastify's default parser rejects POST/PUT with Content-Type: application/json
+  // but no body, which breaks action endpoints (approve, cancel, bounce, etc.).
+  server.removeContentTypeParser('application/json');
+  server.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    const text = (body as string || '').trim();
+    if (!text) {
+      done(null, {});
+      return;
+    }
+    try {
+      done(null, JSON.parse(text));
+    } catch (err: any) {
+      err.statusCode = 400;
+      done(err, undefined);
+    }
+  });
+
   // Initialize database
   await initializeDb();
 

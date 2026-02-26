@@ -524,17 +524,24 @@ class SalesQuotationService extends BaseService {
         Object.assign(headerUpdates, headerTotals);
       }
 
-      // Clean up fields that shouldn't be updated directly
-      delete (headerUpdates as any).company_id;
-      delete (headerUpdates as any).branch_id;
-      delete (headerUpdates as any).quotation_number;
-      delete (headerUpdates as any).quotation_date;
-      delete (headerUpdates as any).status;
+      // Only allow known DB columns to be updated (prevents unknown field crashes)
+      const allowedQuotationFields = new Set([
+        'valid_until', 'customer_id', 'contact_person_id',
+        'billing_address_id', 'shipping_address_id', 'reference_number',
+        'currency_code', 'exchange_rate', 'subtotal', 'discount_amount',
+        'taxable_amount', 'cgst_amount', 'sgst_amount', 'igst_amount',
+        'cess_amount', 'total_tax', 'grand_total', 'round_off',
+        'terms_and_conditions', 'internal_notes', 'metadata',
+      ]);
+      const safeUpdates: Record<string, any> = {};
+      for (const [key, value] of Object.entries(headerUpdates)) {
+        if (allowedQuotationFields.has(key)) safeUpdates[key] = value;
+      }
 
-      if (Object.keys(headerUpdates).length > 0) {
+      if (Object.keys(safeUpdates).length > 0) {
         await trx('sales_quotations')
           .where({ id })
-          .update({ ...headerUpdates, updated_by: input.updated_by });
+          .update({ ...safeUpdates, updated_by: input.updated_by });
       }
 
       // Return updated quotation

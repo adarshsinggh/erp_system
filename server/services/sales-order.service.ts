@@ -576,18 +576,25 @@ class SalesOrderService extends BaseService {
         Object.assign(headerUpdates, headerTotals);
       }
 
-      // Clean fields
-      delete (headerUpdates as any).company_id;
-      delete (headerUpdates as any).branch_id;
-      delete (headerUpdates as any).order_number;
-      delete (headerUpdates as any).order_date;
-      delete (headerUpdates as any).status;
-      delete (headerUpdates as any).quotation_id;
+      // Only allow known DB columns to be updated (prevents unknown field crashes)
+      const allowedOrderFields = new Set([
+        'expected_delivery_date', 'customer_id', 'contact_person_id',
+        'billing_address_id', 'shipping_address_id', 'customer_po_number',
+        'currency_code', 'exchange_rate', 'payment_terms_days',
+        'subtotal', 'discount_amount', 'taxable_amount',
+        'cgst_amount', 'sgst_amount', 'igst_amount', 'cess_amount',
+        'total_tax', 'grand_total', 'round_off',
+        'terms_and_conditions', 'internal_notes', 'metadata',
+      ]);
+      const safeUpdates: Record<string, any> = {};
+      for (const [key, value] of Object.entries(headerUpdates)) {
+        if (allowedOrderFields.has(key)) safeUpdates[key] = value;
+      }
 
-      if (Object.keys(headerUpdates).length > 0) {
+      if (Object.keys(safeUpdates).length > 0) {
         await trx('sales_orders')
           .where({ id })
-          .update({ ...headerUpdates, updated_by: input.updated_by });
+          .update({ ...safeUpdates, updated_by: input.updated_by });
       }
 
       const updated = await trx('sales_orders').where({ id }).first();

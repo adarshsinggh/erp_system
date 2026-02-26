@@ -22,6 +22,18 @@ import { BaseService, ListOptions } from './base.service';
 
 export type CreditNoteReason = 'return' | 'pricing_error' | 'quality' | 'goodwill';
 
+export interface CreditNoteLineInput {
+  product_id: string;
+  description?: string;
+  quantity: number;
+  uom_id: string;
+  unit_price: number;
+  hsn_code?: string;
+  cgst_rate?: number;
+  sgst_rate?: number;
+  igst_rate?: number;
+}
+
 export interface CreateCreditNoteInput {
   company_id: string;
   branch_id: string;
@@ -30,10 +42,11 @@ export interface CreateCreditNoteInput {
   invoice_id?: string;
   reason: CreditNoteReason;
   reason_detail?: string;
-  subtotal: number;
+  subtotal?: number;          // optional when lines are provided (auto-computed)
   cgst_amount?: number;
   sgst_amount?: number;
   igst_amount?: number;
+  lines?: CreditNoteLineInput[];
   metadata?: Record<string, any>;
   // For 'return' reason — stock return details
   return_items?: ReturnItemInput[];
@@ -161,9 +174,11 @@ class CreditNoteService extends BaseService {
 
       // Auto-generate credit note number
       // Schema doesn't have 'credit_note' in document_sequences CHECK,
-      // so we use manual numbering like delivery challans
+      // so we use manual numbering like delivery challans.
+      // Must query ALL records (including soft-deleted) because the
+      // unique constraint includes deleted rows.
       const lastCN = await trx('credit_notes')
-        .where({ company_id: input.company_id, is_deleted: false })
+        .where({ company_id: input.company_id })
         .orderBy('created_at', 'desc')
         .first();
 
@@ -176,12 +191,74 @@ class CreditNoteService extends BaseService {
         creditNoteNumber = 'CN-00001';
       }
 
-      // Compute totals
-      const cgstAmount = round2(input.cgst_amount || 0);
-      const sgstAmount = round2(input.sgst_amount || 0);
-      const igstAmount = round2(input.igst_amount || 0);
+      // ─── Compute line-level and header totals ───
+      let subtotal: number;
+      let cgstAmount: number;
+      let sgstAmount: number;
+      let igstAmount: number;
+      let computedLines: Array<Record<string, any>> = [];
+
+      if (input.lines && input.lines.length > 0) {
+        // Auto-compute from lines
+        subtotal = 0;
+        cgstAmount = 0;
+        sgstAmount = 0;
+        igstAmount = 0;
+
+        computedLines = input.lines.map((line, idx) => {
+          const taxableAmount = round2(line.quantity * line.unit_price);
+          const lineCgst = round2(taxableAmount * (line.cgst_rate || 0) / 100);
+          const lineSgst = round2(taxableAmount * (line.sgst_rate || 0) / 100);
+          const lineIgst = round2(taxableAmount * (line.igst_rate || 0) / 100);
+          const totalAmount = round2(taxableAmount + lineCgst + lineSgst + lineIgst);
+
+          subtotal += taxableAmount;
+          cgstAmount += lineCgst;
+          sgstAmount += lineSgst;
+          igstAmount += lineIgst;
+
+          return {
+            line_number: idx + 1,
+            product_id: line.product_id,
+            description: line.description || null,
+            quantity: line.quantity,
+            uom_id: line.uom_id,
+            unit_price: line.unit_price,
+            taxable_amount: taxableAmount,
+            cgst_rate: line.cgst_rate || 0,
+            sgst_rate: line.sgst_rate || 0,
+            igst_rate: line.igst_rate || 0,
+            cgst_amount: lineCgst,
+            sgst_amount: lineSgst,
+            igst_amount: lineIgst,
+            total_amount: totalAmount,
+            hsn_code: line.hsn_code || null,
+          };
+        });
+
+        subtotal = round2(subtotal);
+        cgstAmount = round2(cgstAmount);
+        sgstAmount = round2(sgstAmount);
+        igstAmount = round2(igstAmount);
+
+        // If subtotal was explicitly provided, prefer it (backward compatible)
+        if (input.subtotal !== undefined && input.subtotal !== null) {
+          subtotal = round2(input.subtotal);
+        }
+        // If GST amounts were explicitly provided, prefer them
+        if (input.cgst_amount !== undefined) cgstAmount = round2(input.cgst_amount);
+        if (input.sgst_amount !== undefined) sgstAmount = round2(input.sgst_amount);
+        if (input.igst_amount !== undefined) igstAmount = round2(input.igst_amount);
+      } else {
+        // No lines — use explicitly provided amounts
+        subtotal = round2(input.subtotal || 0);
+        cgstAmount = round2(input.cgst_amount || 0);
+        sgstAmount = round2(input.sgst_amount || 0);
+        igstAmount = round2(input.igst_amount || 0);
+      }
+
       const totalTax = round2(cgstAmount + sgstAmount + igstAmount);
-      const grandTotal = round2(input.subtotal + totalTax);
+      const grandTotal = round2(subtotal + totalTax);
 
       // Insert credit note
       const [creditNote] = await trx('credit_notes')
@@ -194,7 +271,7 @@ class CreditNoteService extends BaseService {
           invoice_id: input.invoice_id || null,
           reason: input.reason,
           reason_detail: input.reason_detail || null,
-          subtotal: input.subtotal,
+          subtotal,
           cgst_amount: cgstAmount,
           sgst_amount: sgstAmount,
           igst_amount: igstAmount,
@@ -205,6 +282,18 @@ class CreditNoteService extends BaseService {
           created_by: input.created_by,
         })
         .returning('*');
+
+      // Insert credit note lines (if provided)
+      if (computedLines.length > 0) {
+        await trx('credit_note_lines').insert(
+          computedLines.map((line) => ({
+            company_id: input.company_id,
+            credit_note_id: creditNote.id,
+            created_by: input.created_by,
+            ...line,
+          }))
+        );
+      }
 
       return creditNote;
     });
@@ -491,8 +580,14 @@ class CreditNoteService extends BaseService {
         .first();
     }
 
+    // Credit note lines
+    const lines = await this.db('credit_note_lines')
+      .where({ credit_note_id: id, company_id: companyId, is_deleted: false })
+      .orderBy('line_number');
+
     return {
       ...cn,
+      lines,
       customer,
       branch,
       invoice,

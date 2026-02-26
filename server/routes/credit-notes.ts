@@ -38,8 +38,10 @@ export async function creditNoteRoutes(server: FastifyInstance) {
         });
       }
 
-      if (body.subtotal === undefined || body.subtotal === null || body.subtotal < 0) {
-        return reply.code(400).send({ success: false, error: 'subtotal is required and must be >= 0' });
+      // subtotal is required unless lines are provided (auto-computed from lines)
+      const hasLines = body.lines && Array.isArray(body.lines) && body.lines.length > 0;
+      if (!hasLines && (body.subtotal === undefined || body.subtotal === null || body.subtotal < 0)) {
+        return reply.code(400).send({ success: false, error: 'subtotal is required (or provide lines) and must be >= 0' });
       }
 
       const user = request.user!;
@@ -51,10 +53,11 @@ export async function creditNoteRoutes(server: FastifyInstance) {
         invoice_id: body.invoice_id,
         reason: body.reason,
         reason_detail: body.reason_detail,
-        subtotal: parseFloat(body.subtotal),
+        subtotal: body.subtotal !== undefined ? parseFloat(body.subtotal) : undefined,
         cgst_amount: body.cgst_amount ? parseFloat(body.cgst_amount) : undefined,
         sgst_amount: body.sgst_amount ? parseFloat(body.sgst_amount) : undefined,
         igst_amount: body.igst_amount ? parseFloat(body.igst_amount) : undefined,
+        lines: hasLines ? body.lines : undefined,
         metadata: body.metadata,
         return_items: body.return_items,
         created_by: user.userId,

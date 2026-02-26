@@ -9,6 +9,7 @@
 import { Knex } from 'knex';
 import { BaseService, ListOptions } from './base.service';
 import { purchaseOrderService } from './purchase-order.service';
+import { inventoryService, StockMovementInput } from './inventory.service';
 
 // ────────────────────────────────────────────────────────────
 // Interfaces
@@ -502,11 +503,12 @@ class GoodsReceiptNoteService extends BaseService {
         })
         .returning('*');
 
+      // Fetch GRN lines for stock + PO updates
+      const grnLines = await trx('grn_lines')
+        .where({ grn_id: id, company_id: companyId, is_deleted: false });
+
       // Update PO received quantities if linked to a PO
       if (grn.purchase_order_id) {
-        const grnLines = await trx('grn_lines')
-          .where({ grn_id: id, company_id: companyId, is_deleted: false });
-
         const lineReceipts = grnLines
           .filter((line: any) => line.po_line_id)
           .map((line: any) => ({
@@ -523,6 +525,35 @@ class GoodsReceiptNoteService extends BaseService {
             trx
           );
         }
+      }
+
+      // ── Record stock movements for each accepted GRN line ──
+      for (const line of grnLines) {
+        const acceptedQty = parseFloat(line.quantity_accepted) || 0;
+        if (acceptedQty <= 0) continue;
+
+        const movement: StockMovementInput = {
+          company_id: companyId,
+          branch_id: grn.branch_id,
+          warehouse_id: grn.warehouse_id,
+          item_id: line.item_id || undefined,
+          product_id: line.product_id || undefined,
+          transaction_type: 'grn_receipt',
+          transaction_date: grn.grn_date,
+          reference_type: 'grn',
+          reference_id: id,
+          reference_number: grn.grn_number,
+          direction: 'in',
+          quantity: acceptedQty,
+          uom_id: line.uom_id,
+          unit_cost: parseFloat(line.unit_cost) || 0,
+          batch_id: line.batch_id || undefined,
+          serial_number: line.serial_numbers?.[0] || undefined,
+          narration: `GRN receipt — ${grn.grn_number}`,
+          created_by: userId,
+        };
+
+        await inventoryService.recordMovement(movement, trx);
       }
 
       return confirmed;

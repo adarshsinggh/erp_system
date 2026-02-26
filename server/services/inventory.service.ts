@@ -419,13 +419,10 @@ class InventoryService extends BaseService {
     }
 
     if (productId) {
-      const product = await db('products')
-        .where({ id: productId, company_id: companyId })
-        .select('costing_method')
-        .first();
-      if (product?.costing_method) {
-        return product.costing_method as 'fifo' | 'weighted_avg' | 'standard';
-      }
+      // Products (finished goods) don't currently have a costing_method column;
+      // they use weighted_avg by default. If the column is added later, this
+      // code can be updated to query it.
+      // For now, fall through to the default below.
     }
 
     // Default

@@ -16,6 +16,7 @@
 import { Knex } from 'knex';
 import { BaseService, ListOptions } from './base.service';
 import { salesOrderService } from './sales-order.service';
+import { inventoryService, StockMovementInput } from './inventory.service';
 
 // ────────────────────────────────────────────────────────────
 // Interfaces
@@ -181,8 +182,10 @@ class DeliveryChallanService extends BaseService {
       // Note: delivery challans don't have a document_sequence type yet,
       // so we use a manual approach with branch prefix + counter.
       // TODO: Add 'delivery_challan' to document_sequences in a future migration.
+      // Must query ALL records (including soft-deleted) because the
+      // unique constraint includes deleted rows.
       const lastChallan = await trx('delivery_challans')
-        .where({ company_id: input.company_id, is_deleted: false })
+        .where({ company_id: input.company_id })
         .orderBy('created_at', 'desc')
         .first();
 
@@ -261,51 +264,36 @@ class DeliveryChallanService extends BaseService {
         throw new Error('Challan has no lines');
       }
 
-      // For each line: update stock_summary and fulfill reservations
+      // For each line: record stock movement and fulfill reservations
       for (const line of lines) {
-        // 1. Update stock_summary — deduct available, update reserved
-        const stockSummary = await trx('stock_summary')
-          .where({
-            company_id: companyId,
-            warehouse_id: challan.warehouse_id,
-            product_id: line.product_id,
-          })
-          .first();
+        const dispatchQty = parseFloat(line.quantity);
+        if (dispatchQty <= 0) continue;
 
-        if (stockSummary) {
-          const currentAvailable = parseFloat(stockSummary.available_quantity) || 0;
-          const dispatchQty = parseFloat(line.quantity);
+        // 1. Record stock movement via inventory engine (handles stock validation,
+        //    stock_ledger creation, stock_summary updates, and valuation)
+        const movement: StockMovementInput = {
+          company_id: companyId,
+          branch_id: challan.branch_id,
+          warehouse_id: challan.warehouse_id,
+          item_id: line.item_id || undefined,
+          product_id: line.product_id || undefined,
+          transaction_type: 'sales_dispatch',
+          transaction_date: challan.challan_date,
+          reference_type: 'delivery_challan',
+          reference_id: id,
+          reference_number: challan.challan_number,
+          direction: 'out',
+          quantity: dispatchQty,
+          uom_id: line.uom_id,
+          unit_cost: parseFloat(line.unit_price) || 0,
+          batch_id: line.batch_id || undefined,
+          narration: `Sales dispatch — ${challan.challan_number}`,
+          created_by: userId,
+        };
 
-          if (currentAvailable < dispatchQty) {
-            // Get product name for better error message
-            const product = await trx('products').where({ id: line.product_id }).first();
-            throw new Error(
-              `Insufficient stock for ${product?.name || line.product_id}. ` +
-              `Available: ${currentAvailable}, Required: ${dispatchQty}`
-            );
-          }
+        await inventoryService.recordMovement(movement, trx);
 
-          const newAvailable = round3(currentAvailable - dispatchQty);
-          const currentReserved = parseFloat(stockSummary.reserved_quantity) || 0;
-          const newReserved = Math.max(0, round3(currentReserved - dispatchQty));
-          const newFree = round3(newAvailable - newReserved);
-
-          await trx('stock_summary')
-            .where({ id: stockSummary.id })
-            .update({
-              available_quantity: newAvailable,
-              reserved_quantity: newReserved,
-              free_quantity: newFree,
-              last_sale_date: challan.challan_date,
-              last_movement_date: challan.challan_date,
-              updated_by: userId,
-            });
-        }
-        // If no stock_summary exists, the stock engine (Step 27) will handle
-        // initial creation. For now, we allow dispatch without existing summary
-        // to support pre-stock-engine testing.
-
-        // 2. Fulfill stock reservations (if SO linked)
+        // 2. After stock deduction, also reduce reserved_quantity if reservation exists
         if (line.sales_order_line_id && challan.sales_order_id) {
           const reservation = await trx('stock_reservations')
             .where({
@@ -319,7 +307,7 @@ class DeliveryChallanService extends BaseService {
 
           if (reservation) {
             const newFulfilled = round3(
-              parseFloat(reservation.fulfilled_quantity) + parseFloat(line.quantity)
+              parseFloat(reservation.fulfilled_quantity) + dispatchQty
             );
             const fullyFulfilled = newFulfilled >= parseFloat(reservation.reserved_quantity);
 
@@ -330,6 +318,25 @@ class DeliveryChallanService extends BaseService {
                 status: fullyFulfilled ? 'fulfilled' : 'active',
                 updated_by: userId,
               });
+
+            // Reduce reserved_quantity on stock_summary (recordMovement doesn't do this)
+            const summary = await trx('stock_summary')
+              .where({
+                company_id: companyId,
+                warehouse_id: challan.warehouse_id,
+                product_id: line.product_id,
+              })
+              .first();
+            if (summary) {
+              const currentReserved = parseFloat(summary.reserved_quantity) || 0;
+              const newReserved = Math.max(0, round3(currentReserved - dispatchQty));
+              await trx('stock_summary')
+                .where({ id: summary.id })
+                .update({
+                  reserved_quantity: newReserved,
+                  free_quantity: round3(parseFloat(summary.available_quantity) - newReserved),
+                });
+            }
           }
         }
       }

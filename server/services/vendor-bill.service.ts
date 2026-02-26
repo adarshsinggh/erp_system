@@ -397,11 +397,12 @@ class VendorBillService extends BaseService {
         .first();
     }
 
-    // Payment records linked to this bill
-    const payments = await this.db('vendor_payments')
-      .where({ vendor_bill_id: id, company_id: companyId, is_deleted: false })
-      .select('id', 'payment_number', 'payment_date', 'amount', 'payment_method', 'status')
-      .orderBy('payment_date', 'desc');
+    // Payment records linked to this bill (via allocations table)
+    const payments = await this.db('vendor_payments as vp')
+      .join('vendor_payment_allocations as vpa', 'vpa.payment_id', 'vp.id')
+      .where({ 'vpa.bill_id': id, 'vp.company_id': companyId, 'vp.is_deleted': false, 'vpa.is_deleted': false })
+      .select('vp.id', 'vp.payment_number', 'vp.payment_date', 'vpa.allocated_amount as amount', 'vp.payment_mode', 'vp.status')
+      .orderBy('vp.payment_date', 'desc');
 
     return {
       ...header,

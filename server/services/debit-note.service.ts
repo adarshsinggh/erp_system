@@ -191,7 +191,7 @@ class DebitNoteService extends BaseService {
 
     // Lines (if any exist)
     const lines = await this.db('debit_note_lines')
-      .where({ debit_note_id: id, company_id: companyId, is_deleted: false })
+      .where({ 'debit_note_lines.debit_note_id': id, 'debit_note_lines.company_id': companyId, 'debit_note_lines.is_deleted': false })
       .leftJoin('items as i', 'debit_note_lines.item_id', 'i.id')
       .leftJoin('units_of_measurement as u', 'debit_note_lines.uom_id', 'u.id')
       .select(
