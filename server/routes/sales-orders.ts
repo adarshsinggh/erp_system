@@ -250,15 +250,31 @@ export async function salesOrderRoutes(server: FastifyInstance) {
   server.post('/sales-orders/:id/confirm', { preHandler: [authenticate] }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      const confirmed = await salesOrderService.confirmSalesOrder(
+      const result = await salesOrderService.confirmSalesOrder(
         id,
         request.user!.companyId,
         request.user!.userId
       );
+
+      const { auto_work_orders, ...confirmed } = result;
+
+      const workOrderSummary = auto_work_orders ? {
+        created_count: auto_work_orders.created.length,
+        skipped_count: auto_work_orders.skipped.length,
+        error_count: auto_work_orders.errors.length,
+        work_orders: auto_work_orders.created,
+        errors: auto_work_orders.errors.length > 0 ? auto_work_orders.errors : undefined,
+      } : undefined;
+
+      const woMsg = workOrderSummary?.created_count
+        ? ` ${workOrderSummary.created_count} work order(s) auto-created.`
+        : '';
+
       return {
         success: true,
-        message: 'Sales order confirmed. Stock reservations created.',
+        message: `Sales order confirmed. Stock reservations created.${woMsg}`,
         data: confirmed,
+        work_orders: workOrderSummary,
       };
     } catch (error: any) {
       const statusCode = error.message.includes('not found') ? 404 : 400;

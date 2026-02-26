@@ -11,6 +11,8 @@
 import { Knex } from 'knex';
 import { BaseService, ListOptions } from './base.service';
 import { salesQuotationService } from './sales-quotation.service';
+import { workOrderService, CreateWorkOrderInput } from './work-order.service';
+import { inventoryService } from './inventory.service';
 
 // ────────────────────────────────────────────────────────────
 // Interfaces
@@ -606,65 +608,215 @@ class SalesOrderService extends BaseService {
     });
   }
 
-  // ──────── CONFIRM (draft → confirmed + stock reservation) ────────
+  // ──────── CONFIRM (draft → confirmed + stock reservation + auto work orders) ────────
 
   async confirmSalesOrder(id: string, companyId: string, userId: string) {
-    return await this.db.transaction(async (trx) => {
-      const so = await trx('sales_orders')
-        .where({ id, company_id: companyId, is_deleted: false })
-        .first();
+    // Phase 1: Confirm SO + create stock reservations (transactional)
+    const { confirmed, lines, defaultWarehouse, branchId, orderDate, expectedDeliveryDate } =
+      await this.db.transaction(async (trx) => {
+        const so = await trx('sales_orders')
+          .where({ id, company_id: companyId, is_deleted: false })
+          .first();
 
-      if (!so) throw new Error('Sales order not found');
-      if (so.status !== 'draft') {
-        throw new Error(`Cannot confirm. Current status: "${so.status}". Only draft orders can be confirmed.`);
+        if (!so) throw new Error('Sales order not found');
+        if (so.status !== 'draft') {
+          throw new Error(`Cannot confirm. Current status: "${so.status}". Only draft orders can be confirmed.`);
+        }
+
+        // Get lines
+        const lines = await trx('sales_order_lines')
+          .where({ sales_order_id: id, company_id: companyId, is_deleted: false });
+
+        if (lines.length === 0) {
+          throw new Error('Sales order has no lines');
+        }
+
+        // Get default warehouse for the branch (if line doesn't specify one)
+        const defaultWarehouse = await trx('warehouses')
+          .where({ branch_id: so.branch_id, company_id: companyId, is_default: true, is_deleted: false })
+          .first();
+
+        if (!defaultWarehouse) {
+          throw new Error('No default warehouse found for this branch. Please configure warehouses first.');
+        }
+
+        // Create stock reservations for each line
+        const reservations = lines.map((line: any) => ({
+          company_id: companyId,
+          branch_id: so.branch_id,
+          warehouse_id: line.warehouse_id || defaultWarehouse.id,
+          product_id: line.product_id,
+          reserved_quantity: parseFloat(line.quantity),
+          fulfilled_quantity: 0,
+          uom_id: line.uom_id,
+          reference_type: 'sales_order',
+          reference_id: id,
+          reference_line_id: line.id,
+          status: 'active',
+          created_by: userId,
+        }));
+
+        await trx('stock_reservations').insert(reservations);
+
+        // Update SO status
+        const [confirmed] = await trx('sales_orders')
+          .where({ id })
+          .update({
+            status: 'confirmed',
+            updated_by: userId,
+          })
+          .returning('*');
+
+        return {
+          confirmed,
+          lines,
+          defaultWarehouse,
+          branchId: so.branch_id,
+          orderDate: so.order_date,
+          expectedDeliveryDate: so.expected_delivery_date,
+        };
+      });
+
+    // Phase 2: Auto-create Work Orders for manufactured products with
+    // insufficient stock (best-effort, post-commit — failures are logged
+    // but do not roll back the SO confirmation)
+    const autoWorkOrders = await this.autoCreateWorkOrders(
+      id, companyId, userId, lines, defaultWarehouse,
+      branchId, orderDate, expectedDeliveryDate
+    );
+
+    return {
+      ...confirmed,
+      auto_work_orders: autoWorkOrders,
+    };
+  }
+
+  // ──────── AUTO WORK ORDER CREATION ────────
+
+  /**
+   * Auto-create draft Work Orders for manufactured products (those with an
+   * active BOM) whose free stock is insufficient to fulfil the SO line qty.
+   *
+   * Best-effort: individual WO failures are logged but do not block the
+   * SO confirmation or affect other lines.
+   */
+  private async autoCreateWorkOrders(
+    salesOrderId: string,
+    companyId: string,
+    userId: string,
+    lines: any[],
+    defaultWarehouse: any,
+    branchId: string,
+    orderDate: string,
+    expectedDeliveryDate: string | null
+  ): Promise<{ created: any[]; skipped: any[]; errors: any[] }> {
+    const created: any[] = [];
+    const skipped: any[] = [];
+    const errors: any[] = [];
+
+    for (const line of lines) {
+      const productId = line.product_id;
+      const lineQty = parseFloat(line.quantity);
+      const warehouseId = line.warehouse_id || defaultWarehouse.id;
+
+      try {
+        // 1. Check if product has an active BOM (manufactured product)
+        const activeBom = await this.db('bom_headers')
+          .where({
+            product_id: productId,
+            company_id: companyId,
+            status: 'active',
+            is_deleted: false,
+          })
+          .first();
+
+        if (!activeBom) {
+          // Not a manufactured product — skip silently
+          skipped.push({
+            product_id: productId,
+            line_number: line.line_number,
+            reason: 'no_active_bom',
+          });
+          continue;
+        }
+
+        // 2. Check current free stock in the warehouse
+        const stockBalance = await inventoryService.getStockBalance(
+          companyId, warehouseId, undefined, productId
+        );
+
+        const freeQty = parseFloat(stockBalance?.free_quantity ?? '0');
+
+        if (freeQty >= lineQty) {
+          // Sufficient stock — no manufacturing needed
+          skipped.push({
+            product_id: productId,
+            line_number: line.line_number,
+            reason: 'sufficient_stock',
+            free_quantity: freeQty,
+            required_quantity: lineQty,
+          });
+          continue;
+        }
+
+        // 3. Calculate deficit
+        const deficit = round2(lineQty - Math.max(0, freeQty));
+
+        // 4. Create draft Work Order for the deficit
+        const woInput: CreateWorkOrderInput = {
+          company_id: companyId,
+          branch_id: branchId,
+          work_order_date: orderDate || new Date().toISOString().split('T')[0],
+          product_id: productId,
+          bom_header_id: activeBom.id,
+          planned_quantity: deficit,
+          uom_id: line.uom_id,
+          source_warehouse_id: warehouseId,
+          target_warehouse_id: warehouseId,
+          sales_order_id: salesOrderId,
+          planned_start_date: orderDate || new Date().toISOString().split('T')[0],
+          planned_end_date: expectedDeliveryDate || undefined,
+          priority: 'normal',
+          internal_notes:
+            `Auto-created from Sales Order confirmation. ` +
+            `SO line #${line.line_number}, deficit: ${deficit} ` +
+            `(ordered: ${lineQty}, free stock: ${freeQty})`,
+          metadata: {
+            auto_created: true,
+            source: 'sales_order_confirm',
+            sales_order_id: salesOrderId,
+            sales_order_line_id: line.id,
+            ordered_quantity: lineQty,
+            free_stock_at_confirm: freeQty,
+            deficit_quantity: deficit,
+          },
+          created_by: userId,
+        };
+
+        const workOrder = await workOrderService.createWorkOrder(woInput);
+
+        created.push({
+          work_order_id: workOrder.id,
+          work_order_number: workOrder.work_order_number,
+          product_id: productId,
+          line_number: line.line_number,
+          planned_quantity: deficit,
+        });
+      } catch (err: any) {
+        // Log error but do not throw — best-effort
+        console.error(
+          `[AutoWO] Failed to create work order for product ${productId}, ` +
+          `SO line #${line.line_number}: ${err.message}`
+        );
+        errors.push({
+          product_id: productId,
+          line_number: line.line_number,
+          error: err.message,
+        });
       }
+    }
 
-      // Get lines
-      const lines = await trx('sales_order_lines')
-        .where({ sales_order_id: id, company_id: companyId, is_deleted: false });
-
-      if (lines.length === 0) {
-        throw new Error('Sales order has no lines');
-      }
-
-      // Get default warehouse for the branch (if line doesn't specify one)
-      const defaultWarehouse = await trx('warehouses')
-        .where({ branch_id: so.branch_id, company_id: companyId, is_default: true, is_deleted: false })
-        .first();
-
-      if (!defaultWarehouse) {
-        throw new Error('No default warehouse found for this branch. Please configure warehouses first.');
-      }
-
-      // Create stock reservations for each line
-      const reservations = lines.map((line: any) => ({
-        company_id: companyId,
-        branch_id: so.branch_id,
-        warehouse_id: line.warehouse_id || defaultWarehouse.id,
-        product_id: line.product_id,
-        reserved_quantity: parseFloat(line.quantity),
-        fulfilled_quantity: 0,
-        uom_id: line.uom_id,
-        reference_type: 'sales_order',
-        reference_id: id,
-        reference_line_id: line.id,
-        status: 'active',
-        created_by: userId,
-      }));
-
-      await trx('stock_reservations').insert(reservations);
-
-      // Update SO status
-      const [confirmed] = await trx('sales_orders')
-        .where({ id })
-        .update({
-          status: 'confirmed',
-          updated_by: userId,
-        })
-        .returning('*');
-
-      return confirmed;
-    });
+    return { created, skipped, errors };
   }
 
   // ──────── STATUS TRANSITIONS ────────

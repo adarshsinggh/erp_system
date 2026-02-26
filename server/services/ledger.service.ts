@@ -113,7 +113,7 @@ class LedgerService extends BaseService {
 
       // Generate voucher number
       const docType = `voucher_${input.voucher_type}`;
-      const [numResult] = await trx.raw(
+      const numResult = await trx.raw(
         `SELECT get_next_document_number(?, ?, ?) as doc_number`,
         [input.company_id, input.branch_id, docType]
       );

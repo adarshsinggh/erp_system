@@ -190,7 +190,14 @@ export function SalesOrderForm() {
 
   async function handleAction(action: string) {
     try {
-      if (action === 'confirm') { await salesOrdersApi.confirm(id!); toast.success('Order confirmed'); }
+      if (action === 'confirm') {
+        const res = await salesOrdersApi.confirm(id!);
+        const woCount = (res as any)?.work_orders?.created_count || 0;
+        const msg = woCount > 0
+          ? `Order confirmed. ${woCount} work order(s) auto-created.`
+          : 'Order confirmed';
+        toast.success(msg);
+      }
       else if (action === 'cancel') { await salesOrdersApi.cancel(id!); toast.success('Order cancelled'); }
       else if (action === 'close') { await salesOrdersApi.close(id!); toast.success('Order closed'); }
       loadOrder();

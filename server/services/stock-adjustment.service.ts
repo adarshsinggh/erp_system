@@ -165,7 +165,7 @@ class StockAdjustmentService extends BaseService {
       if (!branch) throw new Error('Branch not found');
 
       // Generate document number
-      const [numResult] = await trx.raw(
+      const numResult = await trx.raw(
         `SELECT get_next_document_number(?, ?, 'stock_adjustment') as doc_number`,
         [input.company_id, input.branch_id]
       );

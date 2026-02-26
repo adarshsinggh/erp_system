@@ -84,7 +84,7 @@ class ScrapEntryService extends BaseService {
       if (!warehouse) throw new Error('Warehouse not found');
 
       // Generate scrap number
-      const [numResult] = await trx.raw(
+      const numResult = await trx.raw(
         `SELECT get_next_document_number(?, ?, 'scrap_entry') as doc_number`,
         [input.company_id, input.branch_id]
       );

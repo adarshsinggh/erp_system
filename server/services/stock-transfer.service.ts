@@ -149,7 +149,7 @@ class StockTransferService extends BaseService {
       }
 
       // Generate document number
-      const [numResult] = await trx.raw(
+      const numResult = await trx.raw(
         `SELECT get_next_document_number(?, ?, 'stock_transfer') as doc_number`,
         [input.company_id, input.from_branch_id]
       );

@@ -101,7 +101,7 @@ class ProductionEntryService extends BaseService {
       const totalCost = round2(input.quantity_produced * unitCost);
 
       // Generate entry number
-      const [numResult] = await trx.raw(
+      const numResult = await trx.raw(
         `SELECT get_next_document_number(?, ?, 'production_entry') as doc_number`,
         [input.company_id, input.branch_id]
       );
