@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-02-26T13:54:27.013Z",
+  "stability_score": 1.8,
+  "recommendation": "NO-GO — Critical bugs must be resolved before production",
+  "risk_areas": [
+    "CRITICAL: Ledger integration missing for invoice/payment auto-posting",
+    "MAJOR: Input validation gaps (negative qty, excessive discount)",
+    "No pessimistic locking for concurrent stock updates",
+    "Ledger posting not integrated with sales/purchase cycle",
+    "No automated test suite existed before this validation"
+  ],
+  "improvement_suggestions": [
+    "Integrate ledger postings in invoice creation/approval flow",
+    "Add Zod/DB-level validation for quantity > 0 and price >= 0",
+    "Add row-level locks (SELECT FOR UPDATE) for stock_summary updates",
+    "Implement discount ceiling validation (discount <= subtotal)",
+    "Add rate limit middleware for API endpoints",
+    "Implement audit log for all financial operations",
+    "Add periodic ledger reconciliation scheduled task",
+    "Improve error messages for end users (translate DB errors)"
+  ]
+}

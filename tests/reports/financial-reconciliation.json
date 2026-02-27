@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-02-26T13:54:27.013Z",
+  "trial_balance": {
+    "accounts": 0,
+    "grand_debit": 0,
+    "grand_credit": 0,
+    "difference": 0,
+    "is_balanced": true
+  },
+  "profit_and_loss": {
+    "revenue": 0,
+    "expenses": 0,
+    "net_profit": 0,
+    "profit_type": "profit"
+  },
+  "balance_sheet": {
+    "assets": 0,
+    "liabilities": 0,
+    "equity": 0,
+    "is_balanced": true
+  },
+  "receivables": {
+    "total": 0,
+    "customer_count": 0
+  },
+  "payables": {
+    "total": 0,
+    "vendor_count": 0
+  }
+}

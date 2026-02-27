@@ -6,12 +6,15 @@
   "author": "Adarsh",
   "license": "UNLICENSED",
   "private": true,
-"scripts": {
+  "scripts": {
     "dev:server": "tsx watch server/app.ts",
     "dev:vite": "vite --config vite.config.ts",
     "dev:electron": "wait-on http://localhost:5173 && NODE_ENV=development electron --require tsx electron/main.ts",
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:vite\" \"npm run dev:electron\""
-},
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:vite\" \"npm run dev:electron\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:phase": "vitest run --reporter=verbose"
+  },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
     "@fastify/helmet": "^13.0.0",
@@ -51,6 +54,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
+    "vitest": "^4.0.18",
     "wait-on": "^8.0.2"
   },
   "build": {

@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-02-26T13:54:27.006Z",
+  "total_bugs": 6,
+  "critical": 3,
+  "major": 2,
+  "minor": 1,
+  "bugs": [
+    {
+      "bug_id": "BUG-001",
+      "module": "Sales",
+      "feature": "Invoice Line Validation",
+      "severity": "Major",
+      "steps_to_reproduce": "Create invoice with negative quantity (-5)",
+      "expected_result": "Should reject negative quantities",
+      "actual_result": "Invoice created successfully with negative quantity",
+      "suggested_fix": "Add CHECK constraint or service-level validation: quantity > 0"
+    },
+    {
+      "bug_id": "BUG-002",
+      "module": "Sales",
+      "feature": "Invoice Line Validation",
+      "severity": "Minor",
+      "steps_to_reproduce": "Create invoice with zero quantity",
+      "expected_result": "Should reject zero quantities",
+      "actual_result": "Invoice created with zero quantity",
+      "suggested_fix": "Add validation: quantity must be > 0"
+    },
+    {
+      "bug_id": "BUG-003",
+      "module": "Sales",
+      "feature": "Invoice Line Validation",
+      "severity": "Major",
+      "steps_to_reproduce": "Create invoice with negative unit price (-100)",
+      "expected_result": "Should reject negative prices",
+      "actual_result": "Invoice created with negative unit price",
+      "suggested_fix": "Add validation: unit_price >= 0"
+    },
+    {
+      "bug_id": "BUG-004",
+      "module": "Sales",
+      "feature": "Invoice Discount Validation",
+      "severity": "Critical",
+      "steps_to_reproduce": "Create invoice with discount (200) > subtotal (100)",
+      "expected_result": "Should reject discount exceeding subtotal",
+      "actual_result": "Invoice created with negative taxable amount: -100.00",
+      "suggested_fix": "Add validation: discount_amount <= qty * unit_price per line"
+    },
+    {
+      "bug_id": "BUG-005",
+      "module": "Finance",
+      "feature": "Auto Ledger Posting",
+      "severity": "Critical",
+      "steps_to_reproduce": "Create a sales invoice",
+      "expected_result": "Ledger entries (AR Dr, Revenue Cr, Tax Cr) should be auto-created",
+      "actual_result": "No ledger entries created for invoice",
+      "suggested_fix": "Integrate ledger.createVoucher() call inside salesInvoiceService.createInvoice() or on status change to approved",
+      "db_query_reference": "SELECT * FROM ledger_entries WHERE reference_type='invoice' AND reference_id='a2828db8-2a4a-49db-8cd6-5bf853e0d7a5'"
+    },
+    {
+      "bug_id": "BUG-006",
+      "module": "Finance",
+      "feature": "Payment Receipt Ledger Integration",
+      "severity": "Critical",
+      "steps_to_reproduce": "Create and confirm a payment receipt",
+      "expected_result": "Ledger entries (Bank/Cash Dr, AR Cr) should be auto-created",
+      "actual_result": "No receipt-type ledger entries exist",
+      "suggested_fix": "Add ledger.createVoucher() call in paymentReceiptService.confirmReceipt()"
+    }
+  ]
+}
